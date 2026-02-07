@@ -1,9 +1,11 @@
 import type {
+  ActivityEvent,
   Application,
   Club,
   FormSchema,
   ForumChannel,
   ForumPost,
+  InternalNote,
   InterviewSlot,
   Position,
   RecruitmentPost,
@@ -32,6 +34,8 @@ interface MockStore {
   reviews: Review[];
   forumChannels: ForumChannel[];
   interviewSlots: InterviewSlot[];
+  internalNotes: InternalNote[];
+  activityEvents: ActivityEvent[];
 }
 
 function defaultFixtures(): MockStore {
@@ -74,7 +78,7 @@ function defaultFixtures(): MockStore {
   const applications: Application[] = [
     { id: 'a1', userId: 'stu-alice', clubId: 'c1', positionId: 'p1', status: 'submitted', answers: [{ questionId: 'q-p1-1', question: 'Why do you want to join this club?', answer: 'I love AI and want to contribute to meaningful projects.' }, { questionId: 'q-p1-2', question: 'Relevant experience', answer: '2 years of Python development, completed ML course.' }], submittedAt: '2025-01-20', updatedAt: '2025-01-20', applicantName: 'Alice Chen', applicantEmail: 'alice.chen@mail.mcgill.ca', clubName: 'McGill AI Society', positionTitle: 'Software Developer' },
     { id: 'a2', userId: 'stu-alice', clubId: 'c2', positionId: 'p3', status: 'under_review', answers: [{ questionId: 'q-p3-1', question: 'Why do you want to join this club?', answer: 'I love hackathons and want to help organize McHacks.' }, { questionId: 'q-p3-2', question: 'Relevant experience', answer: 'Built 3 web apps, experienced with React and TypeScript.' }], submittedAt: '2025-01-18', updatedAt: '2025-01-22', applicantName: 'Alice Chen', applicantEmail: 'alice.chen@mail.mcgill.ca', clubName: 'HackMcGill', positionTitle: 'Frontend Developer' },
-    { id: 'a3', userId: 'stu-bob', clubId: 'c1', positionId: 'p2', status: 'interview', answers: [{ questionId: 'q-p2-1', question: 'Why do you want to join this club?', answer: 'I want to share my ML knowledge with others.' }, { questionId: 'q-p2-2', question: 'Relevant experience', answer: 'TA for COMP 551, gave 5 conference presentations.' }], submittedAt: '2025-01-15', updatedAt: '2025-01-25', applicantName: 'Bob Martinez', applicantEmail: 'bob.martinez@mail.mcgill.ca', clubName: 'McGill AI Society', positionTitle: 'Workshop Coordinator' },
+    { id: 'a3', userId: 'stu-bob', clubId: 'c1', positionId: 'p2', status: 'interview_invited', answers: [{ questionId: 'q-p2-1', question: 'Why do you want to join this club?', answer: 'I want to share my ML knowledge with others.' }, { questionId: 'q-p2-2', question: 'Relevant experience', answer: 'TA for COMP 551, gave 5 conference presentations.' }], submittedAt: '2025-01-15', updatedAt: '2025-01-25', applicantName: 'Bob Martinez', applicantEmail: 'bob.martinez@mail.mcgill.ca', clubName: 'McGill AI Society', positionTitle: 'Workshop Coordinator' },
     { id: 'a4', userId: 'stu-clara', clubId: 'c4', positionId: 'p4', status: 'accepted', answers: [{ questionId: 'q-p4-1', question: 'Why do you want to join this club?', answer: 'Passionate about robotics since high school.' }, { questionId: 'q-p4-2', question: 'Relevant experience', answer: 'FRC team lead, ROS and C++ experience.' }], submittedAt: '2025-01-12', updatedAt: '2025-01-28', applicantName: 'Clara Kim', applicantEmail: 'clara.kim@mail.mcgill.ca', clubName: 'McGill Robotics', positionTitle: 'Controls Engineer' },
     { id: 'a5', userId: 'stu-bob', clubId: 'c5', positionId: 'p5', status: 'submitted', answers: [{ questionId: 'q-p5-1', question: 'Why do you want to join this club?', answer: 'I care about diversity in tech and want to help organize events.' }, { questionId: 'q-p5-2', question: 'Relevant experience', answer: 'Organized 2 campus events, strong communication skills.' }], submittedAt: '2025-01-22', updatedAt: '2025-01-22', applicantName: 'Bob Martinez', applicantEmail: 'bob.martinez@mail.mcgill.ca', clubName: 'McGill Women in CS', positionTitle: 'Events Coordinator' },
   ];
@@ -98,21 +102,51 @@ function defaultFixtures(): MockStore {
   ];
 
   const interviewSlots: InterviewSlot[] = [
-    { id: 'is1', positionId: 'p1', startTime: '2025-02-10T10:00:00', endTime: '2025-02-10T10:30:00' },
-    { id: 'is2', positionId: 'p1', startTime: '2025-02-10T10:30:00', endTime: '2025-02-10T11:00:00' },
-    { id: 'is3', positionId: 'p1', startTime: '2025-02-10T11:00:00', endTime: '2025-02-10T11:30:00', bookedByApplicationId: 'a1', bookedByName: 'Alice Chen' },
-    { id: 'is4', positionId: 'p2', startTime: '2025-02-12T14:00:00', endTime: '2025-02-12T14:30:00' },
-    { id: 'is5', positionId: 'p2', startTime: '2025-02-12T14:30:00', endTime: '2025-02-12T15:00:00', bookedByApplicationId: 'a3', bookedByName: 'Bob Martinez' },
+    { id: 'is1', positionId: 'p1', startTime: '2025-02-10T10:00:00', endTime: '2025-02-10T10:30:00', duration: 30, capacity: 1, bookedCount: 0, bookings: [] },
+    { id: 'is2', positionId: 'p1', startTime: '2025-02-10T10:30:00', endTime: '2025-02-10T11:00:00', duration: 30, capacity: 1, bookedCount: 0, bookings: [] },
+    { id: 'is3', positionId: 'p1', startTime: '2025-02-10T11:00:00', endTime: '2025-02-10T11:30:00', duration: 30, capacity: 2, bookedCount: 1, bookings: [{ applicationId: 'a1', applicantName: 'Alice Chen' }] },
+    { id: 'is4', positionId: 'p2', startTime: '2025-02-12T14:00:00', endTime: '2025-02-12T14:30:00', duration: 30, capacity: 1, bookedCount: 0, bookings: [] },
+    { id: 'is5', positionId: 'p2', startTime: '2025-02-12T14:30:00', endTime: '2025-02-12T15:00:00', duration: 30, capacity: 1, bookedCount: 1, bookings: [{ applicationId: 'a3', applicantName: 'Bob Martinez' }] },
   ];
 
-  return { clubs, positions, recruitmentPosts, formSchemas, applications, reviews, forumChannels, interviewSlots };
+  const internalNotes: InternalNote[] = [
+    { id: 'note1', applicationId: 'a1', authorId: 'adm-ai-1', authorName: 'Dr. Smith', body: 'Strong candidate, schedule for technical interview.', createdAt: '2025-01-21T10:30:00' },
+    { id: 'note2', applicationId: 'a3', authorId: 'adm-ai-1', authorName: 'Dr. Smith', body: 'Great presentation skills. Would be perfect for workshops.', createdAt: '2025-01-26T14:00:00' },
+  ];
+
+  const activityEvents: ActivityEvent[] = [
+    { id: 'ev1', applicationId: 'a1', type: 'submitted', actorName: 'Alice Chen', description: 'Application submitted', createdAt: '2025-01-20T09:00:00' },
+    { id: 'ev2', applicationId: 'a1', type: 'status_change', actorName: 'Dr. Smith', description: 'Status changed to Under Review', createdAt: '2025-01-21T10:00:00' },
+    { id: 'ev3', applicationId: 'a1', type: 'note_added', actorName: 'Dr. Smith', description: 'Added internal note', createdAt: '2025-01-21T10:30:00' },
+    { id: 'ev4', applicationId: 'a1', type: 'review_added', actorName: 'Dr. Smith', description: 'Added a 4-star review', createdAt: '2025-01-22T11:00:00' },
+    { id: 'ev5', applicationId: 'a3', type: 'submitted', actorName: 'Bob Martinez', description: 'Application submitted', createdAt: '2025-01-15T08:00:00' },
+    { id: 'ev6', applicationId: 'a3', type: 'status_change', actorName: 'Dr. Smith', description: 'Status changed to Interview', createdAt: '2025-01-25T09:00:00' },
+  ];
+
+  return { clubs, positions, recruitmentPosts, formSchemas, applications, reviews, forumChannels, interviewSlots, internalNotes, activityEvents };
 }
 
 // ── Store manager ─────────────────────────────────────
 function loadStore(): MockStore {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw) as MockStore;
+    if (raw) {
+      const parsed = JSON.parse(raw) as MockStore;
+      // Migrate old data: add missing arrays
+      if (!parsed.internalNotes) parsed.internalNotes = [];
+      if (!parsed.activityEvents) parsed.activityEvents = [];
+      // Migrate old interview slots to new structure
+      if (parsed.interviewSlots?.length && !('bookings' in parsed.interviewSlots[0])) {
+        parsed.interviewSlots = parsed.interviewSlots.map((s: any) => ({
+          ...s,
+          duration: 30,
+          capacity: 1,
+          bookedCount: s.bookedByApplicationId ? 1 : 0,
+          bookings: s.bookedByApplicationId ? [{ applicationId: s.bookedByApplicationId, applicantName: s.bookedByName || '' }] : [],
+        }));
+      }
+      return parsed;
+    }
   } catch { /* corrupted — reset */ }
   const store = defaultFixtures();
   localStorage.setItem(LS_KEY, JSON.stringify(store));
@@ -320,6 +354,21 @@ export function createMockPortalApi(): PortalApi {
       return app;
     },
 
+    async bulkUpdateApplicationStatus(applicationIds, status) {
+      await delay();
+      const updated: Application[] = [];
+      for (const id of applicationIds) {
+        const app = store.applications.find((a) => a.id === id);
+        if (app) {
+          app.status = status;
+          app.updatedAt = now();
+          updated.push(app);
+        }
+      }
+      persist();
+      return updated;
+    },
+
     // ── Reviews ─────────────────────────────────────
     async getReviewThread(applicationId) {
       await delay();
@@ -342,18 +391,71 @@ export function createMockPortalApi(): PortalApi {
       return reply;
     },
 
+    // ── Internal Notes ──────────────────────────────
+    async getInternalNotes(applicationId) {
+      await delay();
+      return store.internalNotes.filter((n) => n.applicationId === applicationId);
+    },
+    async addInternalNote(applicationId, data) {
+      await delay();
+      const note: InternalNote = { id: uid(), applicationId, ...data, createdAt: now() };
+      store.internalNotes.push(note);
+      // Add activity event
+      store.activityEvents.push({
+        id: uid(),
+        applicationId,
+        type: 'note_added',
+        actorName: data.authorName,
+        description: 'Added internal note',
+        createdAt: now(),
+      });
+      persist();
+      return note;
+    },
+
+    // ── Activity Timeline ───────────────────────────
+    async getActivityTimeline(applicationId) {
+      await delay();
+      return store.activityEvents
+        .filter((e) => e.applicationId === applicationId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+
     // ── Interview Slots ─────────────────────────────
     async listInterviewSlots(positionId) {
       await delay();
       return store.interviewSlots.filter((s) => s.positionId === positionId);
     },
+    async createInterviewSlot(positionId, data) {
+      await delay();
+      const endTime = new Date(new Date(data.startTime).getTime() + data.duration * 60000).toISOString();
+      const slot: InterviewSlot = {
+        id: uid(),
+        positionId,
+        startTime: data.startTime,
+        endTime,
+        duration: data.duration,
+        capacity: data.capacity,
+        bookedCount: 0,
+        bookings: [],
+      };
+      store.interviewSlots.push(slot);
+      persist();
+      return slot;
+    },
+    async deleteInterviewSlot(slotId) {
+      await delay();
+      const idx = store.interviewSlots.findIndex((s) => s.id === slotId);
+      if (idx >= 0) store.interviewSlots.splice(idx, 1);
+      persist();
+    },
     async bookInterviewSlot(applicationId, slotId, applicantName) {
       await delay();
       const slot = store.interviewSlots.find((s) => s.id === slotId);
       if (!slot) throw new Error('Slot not found');
-      if (slot.bookedByApplicationId) throw new Error('Slot already booked');
-      slot.bookedByApplicationId = applicationId;
-      slot.bookedByName = applicantName;
+      if (slot.bookedCount >= slot.capacity) throw new Error('Slot is full');
+      slot.bookings.push({ applicationId, applicantName });
+      slot.bookedCount++;
       persist();
       return slot;
     },

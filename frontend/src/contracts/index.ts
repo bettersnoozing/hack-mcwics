@@ -69,7 +69,8 @@ export type ApplicationStatus =
   | 'draft'
   | 'submitted'
   | 'under_review'
-  | 'interview'
+  | 'interview_invited'
+  | 'interview_scheduled'
   | 'accepted'
   | 'rejected';
 
@@ -145,8 +146,40 @@ export interface InterviewSlot {
   positionId: string;
   startTime: string;
   endTime: string;
-  bookedByApplicationId?: string;
-  bookedByName?: string;
+  duration: number; // minutes
+  capacity: number;
+  bookedCount: number;
+  bookings: { applicationId: string; applicantName: string }[];
+}
+
+// ── Email Outbox ──────────────────────────────────────
+export interface EmailPreview {
+  id: string;
+  to: string;
+  subject: string;
+  body: string;
+  createdAt: string;
+  status: 'pending' | 'sent';
+}
+
+// ── Internal Notes ────────────────────────────────────
+export interface InternalNote {
+  id: string;
+  applicationId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+// ── Activity Timeline ─────────────────────────────────
+export interface ActivityEvent {
+  id: string;
+  applicationId: string;
+  type: 'status_change' | 'review_added' | 'note_added' | 'submitted';
+  actorName: string;
+  description: string;
+  createdAt: string;
 }
 
 // ── Filter helpers ────────────────────────────────────

@@ -1,4 +1,5 @@
 import type {
+  ActivityEvent,
   Application,
   ApplicationFilters,
   ApplicationStatus,
@@ -6,6 +7,7 @@ import type {
   FormSchema,
   ForumChannel,
   ForumPost,
+  InternalNote,
   InterviewSlot,
   Position,
   RecruitmentPost,
@@ -50,14 +52,24 @@ export interface PortalApi {
   listApplicationsForClub(clubId: string, filters?: ApplicationFilters): Promise<Application[]>;
   getApplicationDetail(applicationId: string): Promise<Application | undefined>;
   updateApplicationStatus(applicationId: string, status: ApplicationStatus): Promise<Application>;
+  bulkUpdateApplicationStatus(applicationIds: string[], status: ApplicationStatus): Promise<Application[]>;
 
   // ── Reviews (threaded) ────────────────────────────
   getReviewThread(applicationId: string): Promise<ReviewThread>;
   addTopLevelReview(applicationId: string, data: { reviewerId: string; reviewerName: string; rating: number; body: string }): Promise<Review>;
   replyToReview(reviewId: string, data: { authorId: string; authorName: string; body: string }): Promise<ReviewReply>;
 
+  // ── Internal Notes ────────────────────────────────
+  getInternalNotes(applicationId: string): Promise<InternalNote[]>;
+  addInternalNote(applicationId: string, data: { authorId: string; authorName: string; body: string }): Promise<InternalNote>;
+
+  // ── Activity Timeline ─────────────────────────────
+  getActivityTimeline(applicationId: string): Promise<ActivityEvent[]>;
+
   // ── Interview Slots ───────────────────────────────
   listInterviewSlots(positionId: string): Promise<InterviewSlot[]>;
+  createInterviewSlot(positionId: string, data: { startTime: string; duration: number; capacity: number }): Promise<InterviewSlot>;
+  deleteInterviewSlot(slotId: string): Promise<void>;
   bookInterviewSlot(applicationId: string, slotId: string, applicantName: string): Promise<InterviewSlot>;
 
   // ── Forum ─────────────────────────────────────────

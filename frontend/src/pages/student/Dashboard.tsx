@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, Clock } from 'lucide-react';
+import { MessageCircle, Clock, Calendar } from 'lucide-react';
 import { AnimatedPage } from '../../components/motion/AnimatedPage';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { SectionHeader } from '../../components/layout/SectionHeader';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
 import { TabsSegmented } from '../../components/ui/TabsSegmented';
 import { AnimatedTabContent } from '../../components/motion/AnimatedTabContent';
 import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
+import { InterviewSlotPicker } from '../../components/InterviewSlotPicker';
 import { useApi } from '../../contexts/ApiContext';
 import { useDevSession } from '../../contexts/DevSessionContext';
 import type { Application, ApplicationStatus, Club, ForumChannel } from '../../contracts';
@@ -18,7 +20,8 @@ const statusConfig: Record<ApplicationStatus, { label: string; variant: 'default
   draft: { label: 'Draft', variant: 'default' },
   submitted: { label: 'Submitted', variant: 'info' },
   under_review: { label: 'Under Review', variant: 'warning' },
-  interview: { label: 'Interview', variant: 'info' },
+  interview_invited: { label: 'Interview Invited', variant: 'info' },
+  interview_scheduled: { label: 'Interview Scheduled', variant: 'info' },
   accepted: { label: 'Accepted', variant: 'success' },
   rejected: { label: 'Rejected', variant: 'danger' },
 };
@@ -37,6 +40,7 @@ export function Dashboard() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [forums, setForums] = useState<ForumChannel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [slotPickerApp, setSlotPickerApp] = useState<Application | null>(null);
 
   const userId = session?.id ?? '';
 
@@ -83,27 +87,39 @@ export function Dashboard() {
               <div className="space-y-4">
                 {myApps.map((app) => {
                   const st = statusConfig[app.status];
+                  const showPickSlot = app.status === 'interview_invited';
                   return (
-                    <Card key={app.id} hover>
+                    <Card key={app.id} hover className={showPickSlot ? 'border-brand-200 bg-brand-50/30' : ''}>
                       <CardContent>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-semibold text-warmGray-800">{app.positionTitle}</h3>
                               <Badge variant={st.variant}>{st.label}</Badge>
                             </div>
                             <p className="text-sm text-warmGray-500">{app.clubName}</p>
                             <div className="mt-1 flex items-center gap-1 text-xs text-warmGray-400">
                               <Clock size={12} />
-                              Submitted {app.submittedAt}
+                              Submitted {app.submittedAt.split('T')[0]}
                             </div>
                           </div>
-                          <Link
-                            to={`/app/apply/${app.clubId}/${app.positionId}`}
-                            className="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors"
-                          >
-                            View Details →
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            {showPickSlot && (
+                              <Button
+                                variant="cozyGradient"
+                                icon={<Calendar size={14} />}
+                                onClick={() => setSlotPickerApp(app)}
+                              >
+                                Pick Interview Time
+                              </Button>
+                            )}
+                            <Link
+                              to={`/app/apply/${app.clubId}/${app.positionId}`}
+                              className="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors"
+                            >
+                              View →
+                            </Link>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -179,6 +195,24 @@ export function Dashboard() {
             )
           )}
         </AnimatedTabContent>
+
+        {/* Interview Slot Picker Modal */}
+        {slotPickerApp && (
+          <InterviewSlotPicker
+            open={!!slotPickerApp}
+            onClose={() => setSlotPickerApp(null)}
+            application={slotPickerApp}
+            onSlotBooked={() => {
+              // Update the application status locally
+              setMyApps((prev) =>
+                prev.map((a) =>
+                  a.id === slotPickerApp.id ? { ...a, status: 'interview_scheduled' } : a
+                )
+              );
+              setSlotPickerApp(null);
+            }}
+          />
+        )}
       </PageContainer>
     </AnimatedPage>
   );

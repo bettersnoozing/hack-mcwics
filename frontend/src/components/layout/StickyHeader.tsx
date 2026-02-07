@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Shield, FlaskConical, User } from 'lucide-react';
 import { useDevSession } from '../../contexts/DevSessionContext';
+import { OutboxButton } from '../OutboxPanel';
 
 export function StickyHeader() {
   const location = useLocation();
@@ -48,6 +49,13 @@ export function StickyHeader() {
               </Link>
             );
           })}
+
+          {/* Outbox button (admin only) */}
+          {session?.role === 'admin' && (
+            <div className="ml-2">
+              <OutboxButton />
+            </div>
+          )}
 
           {/* Demo Mode pill */}
           <button

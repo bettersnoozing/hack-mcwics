@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ApiProvider } from './contexts/ApiContext';
 import { DevSessionProvider } from './contexts/DevSessionContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { OutboxProvider } from './contexts/OutboxContext';
 import { AppShell } from './components/layout/AppShell';
 import { Landing } from './pages/Landing';
 import { ClubPage } from './pages/ClubPage';
@@ -21,6 +22,7 @@ export default function App() {
       <ApiProvider>
         <DevSessionProvider>
           <ToastProvider>
+            <OutboxProvider>
             <Routes>
               <Route element={<AppShell />}>
                 {/* Public */}
@@ -41,6 +43,7 @@ export default function App() {
                 <Route path="/admin/applications/:applicationId" element={<ApplicationDetail />} />
               </Route>
             </Routes>
+            </OutboxProvider>
           </ToastProvider>
         </DevSessionProvider>
       </ApiProvider>

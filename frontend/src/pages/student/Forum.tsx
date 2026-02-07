@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Send, Users } from 'lucide-react';
 import { AnimatedPage } from '../../components/motion/AnimatedPage';
 import { PageContainer } from '../../components/layout/PageContainer';
@@ -20,6 +20,7 @@ export function Forum() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     if (!applicationGroupId) return;
@@ -28,16 +29,24 @@ export function Forum() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!channel || !session || !message.trim()) return;
+    if (!channel || !session || !message.trim() || sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
-    const post = await api.postForumMessage(channel.applicationGroupId, {
-      senderId: session.id,
-      senderName: session.name,
-      body: message.trim(),
-    });
-    setChannel((prev) => prev ? { ...prev, posts: [...prev.posts, post] } : prev);
+    const msgToSend = message.trim();
     setMessage('');
-    setSending(false);
+    try {
+      await api.postForumMessage(channel.applicationGroupId, {
+        senderId: session.id,
+        senderName: session.name,
+        body: msgToSend,
+      });
+      // Refetch channel to get the updated posts from localStorage
+      const updated = await api.getForumChannel(channel.applicationGroupId);
+      if (updated) setChannel(updated);
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
   };
 
   if (loading) {
