@@ -21,12 +21,14 @@
     "npm": "^11.9.0",
     "prettier": "^3.8.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "mongodb": "^7.1.0"
+
   },
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "nodemon --watch \"src/**/*.ts\" --exec \"node --import 'data:text/javascript,import { register } from \\\"node:module\\\"; import { pathToFileURL } from \\\"node:url\\\"; register(\\\"ts-node/esm\\\", pathToFileURL(\\\"./\\\"));'\" src/server.ts",
+    "dev": "nodemon --watch \"src/**/*.ts\" --exec \"node --import ./register-ts-node.mjs src/server.ts\"",
     "lint": "eslint 'src/**/*.ts'",
     "test": "test"
   }
