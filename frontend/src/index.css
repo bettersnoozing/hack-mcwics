@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  /* Warm Gray */
+  --color-warmGray-50: #fafaf9;
+  --color-warmGray-100: #f5f5f4;
+  --color-warmGray-200: #e7e5e4;
+  --color-warmGray-300: #d6d3d1;
+  --color-warmGray-400: #a8a29e;
+  --color-warmGray-500: #78716c;
+  --color-warmGray-600: #57534e;
+  --color-warmGray-700: #44403c;
+  --color-warmGray-800: #292524;
+  --color-warmGray-900: #1c1917;
+
+  /* Brand (soft indigo-purple) */
+  --color-brand-50: #f0eeff;
+  --color-brand-100: #e0ddff;
+  --color-brand-200: #c4b8ff;
+  --color-brand-300: #a78bff;
+  --color-brand-400: #8b5cf6;
+  --color-brand-500: #7c3aed;
+  --color-brand-600: #6d28d9;
+  --color-brand-700: #5b21b6;
+  --color-brand-800: #4c1d95;
+  --color-brand-900: #3b0764;
+
+  /* Cozy (warm pink-rose) */
+  --color-cozy-50: #fff1f2;
+  --color-cozy-100: #ffe4e6;
+  --color-cozy-200: #fecdd3;
+  --color-cozy-300: #fda4af;
+  --color-cozy-400: #fb7185;
+  --color-cozy-500: #f43f5e;
+  --color-cozy-600: #e11d48;
+  --color-cozy-700: #be123c;
+  --color-cozy-800: #9f1239;
+  --color-cozy-900: #881337;
+
+  /* Calm (soft teal) */
+  --color-calm-50: #f0fdfa;
+  --color-calm-100: #ccfbf1;
+  --color-calm-200: #99f6e4;
+  --color-calm-300: #5eead4;
+  --color-calm-400: #2dd4bf;
+  --color-calm-500: #14b8a6;
+  --color-calm-600: #0d9488;
+  --color-calm-700: #0f766e;
+  --color-calm-800: #115e59;
+  --color-calm-900: #134e4a;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-warmGray-50 text-warmGray-800 antialiased;
+  min-height: 100dvh;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
