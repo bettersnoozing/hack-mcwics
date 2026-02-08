@@ -7,6 +7,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (email: string, password: string, name?: string) => Promise<AuthUser>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -30,15 +31,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { user: u } = await authApi.login({ email, password });
-    setUser(u);
-    return u;
+    await authApi.login({ email, password });
+    // Hydrate full user from /auth/me (includes adminClub, roles, etc.)
+    const fullUser = await authApi.me();
+    setUser(fullUser);
+    return fullUser;
   }, []);
 
   const register = useCallback(async (email: string, password: string, name?: string) => {
     const { user: u } = await authApi.register({ email, password, name });
     setUser(u);
     return u;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const u = await authApi.me();
+    setUser(u);
   }, []);
 
   const logout = useCallback(() => {
@@ -49,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.roles.includes('ADMIN') || user?.roles.includes('CLUB_LEADER') || false;
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

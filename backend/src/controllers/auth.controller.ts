@@ -7,6 +7,20 @@ import { BCRYPT_ROUNDS } from "../config/auth.ts";
 
 const ADMIN_SIGNUP_KEY = process.env.ADMIN_SIGNUP_KEY || "";
 
+// Reject requests that contain fields not in the allowed set.
+function rejectUnknownFields(
+  body: Record<string, unknown>,
+  allowed: string[]
+): string | null {
+  const unknown = Object.keys(body).filter((k) => !allowed.includes(k));
+  if (unknown.length > 0) return `Unknown field(s): ${unknown.join(", ")}`;
+  return null;
+}
+
+function isNonEmptyString(v: unknown): v is string {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
 async function createUser(
   email: string,
   password: string,
@@ -37,18 +51,25 @@ function userResponse(user: InstanceType<typeof User>) {
  * POST /auth/register/student
  * Body: { email, password, name? }
  * Returns: { token, user }
- * Always assigns STUDENT role.
+ * Always assigns STUDENT role. Client-supplied `roles` is rejected.
  */
 export async function register(req: Request, res: Response) {
   try {
+    const bad = rejectUnknownFields(req.body, ["email", "password", "name"]);
+    if (bad) return res.status(400).json({ message: bad });
+
     const { email, password, name } = req.body as {
       email: string;
       password: string;
       name?: string;
     };
 
-    if (!email || !password) {
+    if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
       return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    if (name !== undefined && typeof name !== "string") {
+      return res.status(400).json({ message: "name must be a string" });
     }
 
     const existing = await User.findOne({ email });
@@ -58,7 +79,7 @@ export async function register(req: Request, res: Response) {
 
     const user = await createUser(email, password, name, [Role.STUDENT]);
     res.status(201).json(userResponse(user));
-  } catch (err) { 
+  } catch (err) {
     console.error("register error:", err);
     res.status(500).json({ message: "Internal error" });
   }
@@ -72,6 +93,9 @@ export async function register(req: Request, res: Response) {
  */
 export async function registerAdmin(req: Request, res: Response) {
   try {
+    const bad = rejectUnknownFields(req.body, ["email", "password", "name", "adminKey"]);
+    if (bad) return res.status(400).json({ message: bad });
+
     const { email, password, name, adminKey } = req.body as {
       email: string;
       password: string;
@@ -79,7 +103,7 @@ export async function registerAdmin(req: Request, res: Response) {
       adminKey?: string;
     };
 
-    if (!email || !password) {
+    if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
@@ -111,12 +135,15 @@ export async function registerAdmin(req: Request, res: Response) {
  */
 export async function login(req: Request, res: Response) {
   try {
+    const bad = rejectUnknownFields(req.body, ["email", "password"]);
+    if (bad) return res.status(400).json({ message: bad });
+
     const { email, password } = req.body as {
       email: string;
       password: string;
     };
 
-    if (!email || !password) {
+    if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
@@ -134,7 +161,16 @@ export async function login(req: Request, res: Response) {
 
     res.json({
       token,
-      user: { id: user._id, email: user.email, name: user.name, roles: user.roles },
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        roles: user.roles,
+        adminClub: user.adminClub || null,
+        execPosition: user.execPosition || "",
+        bio: user.bio || "",
+        profilePhotoUrl: user.profilePhotoUrl || "",
+      },
     });
   } catch (err) {
     console.error("login error:", err);
@@ -154,7 +190,16 @@ export async function me(req: Request, res: Response) {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json({ id: user._id, email: user.email, name: user.name, roles: user.roles });
+    res.json({
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      roles: user.roles,
+      adminClub: user.adminClub || null,
+      execPosition: user.execPosition || "",
+      bio: user.bio || "",
+      profilePhotoUrl: user.profilePhotoUrl || "",
+    });
   } catch (err) {
     console.error("me error:", err);
     res.status(500).json({ message: "Internal error" });

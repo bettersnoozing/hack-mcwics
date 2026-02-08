@@ -5,6 +5,10 @@ export interface AuthUser {
   email: string;
   name: string;
   roles: string[];
+  adminClub: string | null;
+  execPosition: string;
+  bio: string;
+  profilePhotoUrl: string;
 }
 
 interface AuthResponse {

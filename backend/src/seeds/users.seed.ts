@@ -29,6 +29,16 @@ async function seed() {
       console.log(`Created admin user: ${SEED_ADMIN_EMAIL}`);
     }
 
+    // Migrate legacy USER roles to STUDENT
+    const migrated = await User.updateMany(
+      { roles: "USER" },
+      { $set: { "roles.$[elem]": Role.STUDENT } },
+      { arrayFilters: [{ elem: "USER" }] }
+    );
+    if (migrated.modifiedCount > 0) {
+      console.log(`Migrated ${migrated.modifiedCount} user(s) from USER -> STUDENT role`);
+    }
+
     await mongoose.disconnect();
     console.log("Seed complete");
     process.exit(0);

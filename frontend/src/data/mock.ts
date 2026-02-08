@@ -4,7 +4,7 @@ export const mockClubs: Club[] = [
   {
     id: '1',
     slug: 'mcgill-ai',
-    name: 'McGill AI Society',
+    name: 'McGill AI',
     description: 'Exploring artificial intelligence through workshops, research projects, and guest lectures. Open to all faculties.',
     tags: ['AI', 'Machine Learning', 'Research'],
     memberCount: 120,
@@ -34,7 +34,7 @@ export const mockClubs: Club[] = [
   {
     id: '4',
     slug: 'mcgill-robotics',
-    name: 'McGill Robotics',
+    name: 'McGi',
     description: 'Design and build autonomous robots for international competitions. Mechanical, electrical, and software teams.',
     tags: ['Robotics', 'Engineering', 'Hardware'],
     memberCount: 65,

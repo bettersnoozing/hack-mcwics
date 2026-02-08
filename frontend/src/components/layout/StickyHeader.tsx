@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Shield, FlaskConical, User, LogOut, MessageCircle } from 'lucide-react';
+
+import { LayoutDashboard, Shield, FlaskConical, User, LogOut, Users, MessageCircle  } from 'lucide-react';
 import { useSession } from '../../hooks/useSession';
 import { OutboxButton } from '../OutboxPanel';
 
@@ -19,6 +20,11 @@ export function StickyHeader() {
     ...(session.role === 'admin'
       ? [{ to: '/admin', label: 'Admin', icon: <Shield size={16} /> as React.ReactNode }]
       : []),
+    ...(session.roles?.includes('CLUB_LEADER') && session.adminClub
+      ? [{ to: `/exec/club/${session.adminClub}`, label: 'Exec', icon: <Users size={16} /> as React.ReactNode }]
+      : session.role && !session.roles?.includes('CLUB_LEADER')
+        ? [{ to: '/exec/auth', label: 'Exec Portal', icon: <Users size={16} /> as React.ReactNode }]
+        : []),
   ];
 
   return (
