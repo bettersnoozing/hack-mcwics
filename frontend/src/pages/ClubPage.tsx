@@ -97,7 +97,7 @@ export function ClubPage() {
         </Link>
 
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-brand-100 to-calm-100 text-2xl font-bold text-brand-600 shadow-sm">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-brand-100 to-calm-100 text-2xl font-bold  shadow-sm">
             {club.name.charAt(0)}
           </div>
           <div className="flex-1">
@@ -113,7 +113,7 @@ export function ClubPage() {
                 {club.tags!.map((tag, i) => (
                   <span
                     key={tag}
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold shadow-sm bg-purple-700 text-cyan-700`}
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold shadow-sm bg-blue-100 text-blue-400`}
                   >
                     {tag}
                   </span>
