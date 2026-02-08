@@ -9,17 +9,17 @@ import { Button } from '../../components/ui/Button';
 import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { useApi } from '../../contexts/ApiContext';
-import { useDevSession } from '../../contexts/DevSessionContext';
+import { useSession } from '../../hooks/useSession';
 import type { Application, RecruitmentPost } from '../../contracts';
 
 export function AdminHome() {
   const api = useApi();
-  const { session } = useDevSession();
+  const session = useSession();
   const [posts, setPosts] = useState<RecruitmentPost[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const clubId = session?.role === 'admin' ? session.clubId : '';
+  const clubId = session.role === 'admin' ? (session.clubId ?? '') : '';
 
   useEffect(() => {
     if (!clubId) { setLoading(false); return; }
@@ -29,10 +29,10 @@ export function AdminHome() {
     ]).then(([r, a]) => { setPosts(r); setApps(a); setLoading(false); });
   }, [api, clubId]);
 
-  if (!session || session.role !== 'admin') {
+  if (session.role !== 'admin') {
     return (
       <PageContainer>
-        <EmptyStateCard emoji="🔒" title="Admin access only" description="Switch to an admin identity using the Demo Mode picker." />
+        <EmptyStateCard emoji="🔒" title="Admin access only" description="Please log in as a club administrator to access this page." />
       </PageContainer>
     );
   }
@@ -56,7 +56,7 @@ export function AdminHome() {
     <AnimatedPage>
       <PageContainer>
         <SectionHeader
-          title={`${session.clubName} Admin`}
+          title={`${session.clubName ?? 'Club'} Admin`}
           subtitle="Manage your club's recruitment and applications"
           action={
             <Link to="/admin/recruitment">

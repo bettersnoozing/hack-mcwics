@@ -12,6 +12,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.2.1",
@@ -30,11 +31,13 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "nodemon --watch \"src/**/*.ts\" --exec \"node --import ./register-ts-node.mjs src/server.ts\"",
+    "seed": "node --import ./register-ts-node.mjs src/seeds/users.seed.ts",
     "lint": "eslint 'src/**/*.ts'",
     "test": "test"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.6"
   }

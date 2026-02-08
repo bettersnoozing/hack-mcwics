@@ -14,7 +14,7 @@ import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { EmailPreviewModal, generateInterviewInviteEmail, generateAcceptedEmail, generateRejectedEmail } from '../../components/EmailPreviewModal';
 import { useApi } from '../../contexts/ApiContext';
-import { useDevSession } from '../../contexts/DevSessionContext';
+import { useSession } from '../../hooks/useSession';
 import { useToast } from '../../contexts/ToastContext';
 import { useOutbox } from '../../contexts/OutboxContext';
 import type { Application, ApplicationStatus, ReviewThread, InternalNote, ActivityEvent, InterviewSlot } from '../../contracts';
@@ -77,7 +77,7 @@ function TimelineIcon({ type }: { type: ActivityEvent['type'] }) {
 export function ApplicationDetail() {
   const { applicationId } = useParams<{ applicationId: string }>();
   const api = useApi();
-  const { session } = useDevSession();
+  const session = useSession();
   const { showToast } = useToast();
   const { addEmail } = useOutbox();
 
@@ -145,7 +145,7 @@ export function ApplicationDetail() {
   };
 
   const handleStatusChange = async (status: ApplicationStatus) => {
-    if (!app || !session) return;
+    if (!app || !session.role) return;
 
     // If this status triggers an email, show preview first
     if (EMAIL_STATUSES.includes(status)) {
@@ -172,7 +172,7 @@ export function ApplicationDetail() {
   };
 
   const confirmStatusChange = async () => {
-    if (!pendingStatus || !emailPreview || !app || !session) return;
+    if (!pendingStatus || !emailPreview || !app || !session.role) return;
     
     addEmail(emailPreview);
     const updated = await api.updateApplicationStatus(app.id, pendingStatus);
@@ -197,7 +197,7 @@ export function ApplicationDetail() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!app || !session || !reviewBody.trim() || reviewRating === 0 || submittingReviewRef.current) return;
+    if (!app || !session.role || !reviewBody.trim() || reviewRating === 0 || submittingReviewRef.current) return;
     submittingReviewRef.current = true;
     setSubmittingReview(true);
     try {
@@ -223,7 +223,7 @@ export function ApplicationDetail() {
   };
 
   const handleSubmitReply = async (reviewId: string) => {
-    if (!app || !session || !replyBody.trim() || submittingReplyRef.current) return;
+    if (!app || !session.role || !replyBody.trim() || submittingReplyRef.current) return;
     submittingReplyRef.current = true;
     try {
       await api.replyToReview(reviewId, {
@@ -243,7 +243,7 @@ export function ApplicationDetail() {
 
   const handleSubmitNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!app || !session || !noteBody.trim() || submittingNoteRef.current) return;
+    if (!app || !session.role || !noteBody.trim() || submittingNoteRef.current) return;
     submittingNoteRef.current = true;
     setSubmittingNote(true);
     try {

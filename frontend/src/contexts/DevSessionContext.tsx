@@ -29,7 +29,13 @@ interface DevSessionCtx {
 
 const LS_SESSION_KEY = 'mcgill-portal-session';
 
-const DevSessionContext = createContext<DevSessionCtx | null>(null);
+const NOOP = () => {};
+
+const DevSessionContext = createContext<DevSessionCtx>({
+  session: null,
+  openPicker: NOOP,
+  clearSession: NOOP,
+});
 
 // ── Preset identities ─────────────────────────────────
 const STUDENTS = [
@@ -78,9 +84,7 @@ export function DevSessionProvider({ children }: { children: ReactNode }) {
 }
 
 export function useDevSession(): DevSessionCtx {
-  const ctx = useContext(DevSessionContext);
-  if (!ctx) throw new Error('useDevSession must be used within <DevSessionProvider>');
-  return ctx;
+  return useContext(DevSessionContext);
 }
 
 // ── Overlay UI ────────────────────────────────────────

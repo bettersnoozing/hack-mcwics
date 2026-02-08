@@ -1,18 +1,21 @@
-import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Shield, FlaskConical, User } from 'lucide-react';
-import { useDevSession } from '../../contexts/DevSessionContext';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Shield, FlaskConical, User, LogOut } from 'lucide-react';
+import { useSession } from '../../hooks/useSession';
 import { OutboxButton } from '../OutboxPanel';
+
+const useRealAuth = import.meta.env.VITE_USE_REAL_AUTH === 'true';
 
 export function StickyHeader() {
   const location = useLocation();
-  const { session, openPicker } = useDevSession();
+  const navigate = useNavigate();
+  const session = useSession();
 
   const navLinks = [
     { to: '/', label: 'Discover', icon: undefined as React.ReactNode },
-    ...(session?.role === 'student'
+    ...(session.role === 'student'
       ? [{ to: '/app', label: 'Dashboard', icon: <LayoutDashboard size={16} /> as React.ReactNode }]
       : []),
-    ...(session?.role === 'admin'
+    ...(session.role === 'admin'
       ? [{ to: '/admin', label: 'Admin', icon: <Shield size={16} /> as React.ReactNode }]
       : []),
   ];
@@ -51,23 +54,35 @@ export function StickyHeader() {
           })}
 
           {/* Outbox button (admin only) */}
-          {session?.role === 'admin' && (
+          {session.role === 'admin' && (
             <div className="ml-2">
               <OutboxButton />
             </div>
           )}
 
-          {/* Demo Mode pill */}
-          <button
-            onClick={openPicker}
-            className="ml-2 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-warmGray-500 hover:text-warmGray-700 hover:bg-warmGray-50 transition-colors cursor-pointer"
-          >
-            <FlaskConical size={14} />
-            <span className="hidden sm:inline">Demo</span>
-          </button>
+          {/* Demo Mode pill (only in demo mode) */}
+          {!useRealAuth && session.openPicker && (
+            <button
+              onClick={session.openPicker}
+              className="ml-2 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-warmGray-500 hover:text-warmGray-700 hover:bg-warmGray-50 transition-colors cursor-pointer"
+            >
+              <FlaskConical size={14} />
+              <span className="hidden sm:inline">Demo</span>
+            </button>
+          )}
 
-          {/* Session identity pill */}
-          {session && (
+          {/* Auth: Sign In link (when not logged in, real auth mode) */}
+          {useRealAuth && !session.role && (
+            <Link
+              to="/auth"
+              className="ml-2 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-warmGray-500 hover:text-warmGray-700 hover:bg-warmGray-50 transition-colors"
+            >
+              Sign In
+            </Link>
+          )}
+
+          {/* Identity pill */}
+          {session.name && (
             <div className="ml-1 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cozy-400/10 to-brand-400/10 px-3 py-2 text-sm font-medium text-warmGray-700">
               <User size={14} />
               <span className="hidden sm:inline max-w-[100px] truncate">{session.name}</span>
@@ -75,6 +90,17 @@ export function StickyHeader() {
                 {session.role}
               </span>
             </div>
+          )}
+
+          {/* Logout (real auth only) */}
+          {useRealAuth && session.logout && (
+            <button
+              onClick={() => { session.logout!(); navigate('/auth'); }}
+              className="ml-1 rounded-xl p-2 text-warmGray-400 hover:text-warmGray-600 hover:bg-warmGray-50 transition-colors cursor-pointer"
+              title="Sign out"
+            >
+              <LogOut size={16} />
+            </button>
           )}
         </nav>
       </div>

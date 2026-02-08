@@ -12,7 +12,7 @@ import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { EmailPreviewModal, generateInterviewInviteEmail, generateAcceptedEmail, generateRejectedEmail } from '../../components/EmailPreviewModal';
 import { useApi } from '../../contexts/ApiContext';
-import { useDevSession } from '../../contexts/DevSessionContext';
+import { useSession } from '../../hooks/useSession';
 import { useToast } from '../../contexts/ToastContext';
 import { useOutbox } from '../../contexts/OutboxContext';
 import type { Application, ApplicationStatus, Position, RecruitmentPost } from '../../contracts';
@@ -188,7 +188,7 @@ function PositionFilterDropdown({
 // ── Main page ─────────────────────────────────────────
 export function Applications() {
   const api = useApi();
-  const { session } = useDevSession();
+  const session = useSession();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { addEmail } = useOutbox();
@@ -225,7 +225,7 @@ export function Applications() {
     status: ApplicationStatus;
   } | null>(null);
 
-  const clubId = session?.role === 'admin' ? session.clubId : '';
+  const clubId = session.role === 'admin' ? (session.clubId ?? '') : '';
 
   useEffect(() => {
     if (!clubId) { setLoading(false); return; }
