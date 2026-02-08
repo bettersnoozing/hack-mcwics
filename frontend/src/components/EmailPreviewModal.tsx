@@ -22,7 +22,7 @@ export function EmailPreviewModal({ open, onClose, onConfirm, email }: EmailPrev
         <Mail size={18} className="text-brand-500" />
         <span className="font-semibold">Email Preview</span>
       </div>
-      <p className="text-xs text-warmGray-500 mb-4">This email will be added to your outbox (demo mode - not actually sent)</p>
+      <p className="text-xs text-warmGray-500 mb-4">This email will be added to your outbox</p>
 
       <div className="rounded-xl border border-warmGray-100 bg-warmGray-50/50 p-4 space-y-3">
         <div className="flex items-start gap-2">

@@ -14,7 +14,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { useApi } from '../../contexts/ApiContext';
-import { useDevSession } from '../../contexts/DevSessionContext';
+import { useSession } from '../../hooks/useSession';
 import type { RecruitmentPost, Position } from '../../contracts';
 
 // ── Post dialog ───────────────────────────────────────
@@ -185,7 +185,7 @@ function PositionDialog({ open, onClose, onSave, initial, saving }: {
 // ── Main page ─────────────────────────────────────────
 export function Recruitment() {
   const api = useApi();
-  const { session } = useDevSession();
+  const session = useSession();
   const [posts, setPosts] = useState<RecruitmentPost[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -200,7 +200,7 @@ export function Recruitment() {
   const [editingPos, setEditingPos] = useState<Position | null>(null);
   const [posSaving, setPosSaving] = useState(false);
 
-  const clubId = session?.role === 'admin' ? session.clubId : '';
+  const clubId = session.role === 'admin' ? (session.clubId ?? '') : '';
 
   useEffect(() => {
     if (!clubId) { setLoading(false); return; }

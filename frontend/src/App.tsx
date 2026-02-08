@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ApiProvider } from './contexts/ApiContext';
 import { DevSessionProvider } from './contexts/DevSessionContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { OutboxProvider } from './contexts/OutboxContext';
 import { AppShell } from './components/layout/AppShell';
@@ -16,11 +17,20 @@ import { Applications } from './pages/admin/Applications';
 import { ApplicationDetail } from './pages/admin/ApplicationDetail';
 import { FormBuilder } from './pages/admin/FormBuilder';
 
+const useRealAuth = import.meta.env.VITE_USE_REAL_AUTH === 'true';
+
+function SessionWrapper({ children }: { children: React.ReactNode }) {
+  if (useRealAuth) {
+    return <AuthProvider>{children}</AuthProvider>;
+  }
+  return <DevSessionProvider>{children}</DevSessionProvider>;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ApiProvider>
-        <DevSessionProvider>
+        <SessionWrapper>
           <ToastProvider>
             <OutboxProvider>
             <Routes>
@@ -45,7 +55,7 @@ export default function App() {
             </Routes>
             </OutboxProvider>
           </ToastProvider>
-        </DevSessionProvider>
+        </SessionWrapper>
       </ApiProvider>
     </BrowserRouter>
   );

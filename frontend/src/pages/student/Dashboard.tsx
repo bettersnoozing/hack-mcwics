@@ -13,7 +13,7 @@ import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { InterviewSlotPicker } from '../../components/InterviewSlotPicker';
 import { useApi } from '../../contexts/ApiContext';
-import { useDevSession } from '../../contexts/DevSessionContext';
+import { useSession } from '../../hooks/useSession';
 import type { Application, ApplicationStatus, Club, ForumChannel } from '../../contracts';
 
 const statusConfig: Record<ApplicationStatus, { label: string; variant: 'default' | 'success' | 'warning' | 'danger' | 'info' }> = {
@@ -34,7 +34,7 @@ const dashTabs = [
 
 export function Dashboard() {
   const api = useApi();
-  const { session } = useDevSession();
+  const session = useSession();
   const [tab, setTab] = useState('applications');
   const [myApps, setMyApps] = useState<Application[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -42,7 +42,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [slotPickerApp, setSlotPickerApp] = useState<Application | null>(null);
 
-  const userId = session?.id ?? '';
+  const userId = session.id;
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
@@ -58,10 +58,10 @@ export function Dashboard() {
     });
   }, [api, userId]);
 
-  if (!session || session.role !== 'student') {
+  if (session.role !== 'student') {
     return (
       <PageContainer>
-        <EmptyStateCard emoji="🔒" title="Student access only" description="Switch to a student identity using the Demo Mode picker." />
+        <EmptyStateCard emoji="🔒" title="Student access only" description="Please log in as a student to access this page." />
       </PageContainer>
     );
   }

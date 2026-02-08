@@ -14,6 +14,7 @@ export enum Role {
 export interface IUser extends Document {
   _id:  Types.ObjectId;
   email: string;
+  name: string;
   passwordHash: string;
   roles: Role[];
 }
@@ -21,11 +22,12 @@ export interface IUser extends Document {
 const userSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, lowercase: true },
+    name: { type: String, required: true },
     passwordHash: { type: String, required: true },
     roles: {
       type: [String],
       enum: Object.values(Role),
-      default: [Role.USER],
+      default: [Role.STUDENT],
     },
   },
   { timestamps: true }

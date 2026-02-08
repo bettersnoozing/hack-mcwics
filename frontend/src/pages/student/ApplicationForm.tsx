@@ -12,14 +12,14 @@ import { Badge } from '../../components/ui/Badge';
 import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { useApi } from '../../contexts/ApiContext';
-import { useDevSession } from '../../contexts/DevSessionContext';
+import { useSession } from '../../hooks/useSession';
 import { useToast } from '../../contexts/ToastContext';
 import type { Club, Position, FormSchema, ForumChannel } from '../../contracts';
 
 export function ApplicationForm() {
   const { clubSlug, positionId } = useParams<{ clubSlug: string; positionId: string }>();
   const api = useApi();
-  const { session } = useDevSession();
+  const session = useSession();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -68,13 +68,13 @@ export function ApplicationForm() {
     );
   }
 
-  if (!session || session.role !== 'student') {
+  if (session.role !== 'student') {
     return (
       <PageContainer>
         <EmptyStateCard
           emoji="🔒"
           title="Student access only"
-          description="Switch to a student identity using the Demo Mode picker to apply."
+          description="Please log in as a student to apply."
         />
       </PageContainer>
     );

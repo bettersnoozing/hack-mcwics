@@ -9,13 +9,13 @@ import { Button } from '../../components/ui/Button';
 import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { useApi } from '../../contexts/ApiContext';
-import { useDevSession } from '../../contexts/DevSessionContext';
+import { useSession } from '../../hooks/useSession';
 import type { ForumChannel } from '../../contracts';
 
 export function Forum() {
   const { applicationGroupId } = useParams<{ applicationGroupId: string }>();
   const api = useApi();
-  const { session } = useDevSession();
+  const session = useSession();
   const [channel, setChannel] = useState<ForumChannel | undefined>();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -29,7 +29,7 @@ export function Forum() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!channel || !session || !message.trim() || sendingRef.current) return;
+    if (!channel || !session.role || !message.trim() || sendingRef.current) return;
     sendingRef.current = true;
     setSending(true);
     const msgToSend = message.trim();
