@@ -17,7 +17,7 @@ mongo_client = None
 mongo_db = None
 
 # Valid application statuses
-VALID_STATUSES = ['pending', 'under_review', 'interview_scheduled', 'accepted', 'rejected', 'waitlisted', 'withdrawn']
+VALID_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'WAITLISTED', 'INTERVIEW_SCHEDULED']
 
 
 def get_mongo_db():
@@ -43,24 +43,21 @@ def update_application(application_id: str, updates: dict, user_email: str) -> d
             if 'ADMIN' in user.get('roles', []) or 'CLUB_LEADER' in user.get('roles', []):
                 is_authorized = True
         elif demo_admin:
+            # Demo admin is authorized
             is_authorized = True
         
         if not is_authorized:
             return {'success': False, 'error': 'Unauthorized - admin access required'}
         
-        # Find the application (Handle both ObjectId and String ID)
-        app_filter = None
-        if ObjectId.is_valid(application_id):
+        # Find the application
+        try:
             app_filter = {'_id': ObjectId(application_id)}
-        else:
-            app_filter = {'$or': [{'applicationId': application_id}, {'id': application_id}]}
-
-        # Fallback: If passed an existing ObjectId string, try that too
-        if not db.applications.find_one(app_filter):
-            try:
-                app_filter = {'_id': ObjectId(application_id)}
-            except:
-                pass
+        except:
+            # Try finding by other identifiers
+            app_filter = {'$or': [
+                {'applicationId': application_id},
+                {'id': application_id}
+            ]}
         
         application = db.applications.find_one(app_filter)
         if not application:
@@ -68,44 +65,53 @@ def update_application(application_id: str, updates: dict, user_email: str) -> d
         
         # Validate status if being updated
         if 'status' in updates:
-            new_status = updates['status'].lower().replace(' ', '_')
+            new_status = updates['status'].upper().replace(' ', '_')
             if new_status not in VALID_STATUSES:
                 return {'success': False, 'error': f'Invalid status. Valid statuses: {", ".join(VALID_STATUSES)}'}
             updates['status'] = new_status
         
         # Add audit trail
         updates['lastUpdatedBy'] = user_email
-        updates['lastUpdatedAt'] = datetime.datetime.utcnow().isoformat()
+        updates['lastUpdatedAt'] = __import__('datetime').datetime.utcnow().isoformat()
         
         # Perform update
         result = db.applications.update_one(app_filter, {'$set': updates})
         
         if result.modified_count > 0:
-            return {'success': True, 'message': 'Application updated successfully', 'updates': updates}
+            return {'success': True, 'message': f'Application updated successfully', 'updates': updates}
         else:
-            # Check if it was already in that state
-            if application.get('status') == updates.get('status'):
-                return {'success': True, 'message': 'Application was already in that state', 'updates': updates}
             return {'success': False, 'error': 'No changes made'}
             
     except Exception as e:
-        print(f"Update error: {e}")
         return {'success': False, 'error': str(e)}
+
+
 def parse_update_command(message: str, applications: list) -> dict:
     """Parse a chat message to detect application update commands."""
     message_lower = message.lower()
-    print(f"[DEBUG] Parsing command: '{message}' against {len(applications)} apps")
     
     # Keywords that indicate an update intent
     update_keywords = ['update', 'change', 'set', 'mark', 'move', 'reject', 'accept', 'approve', 'schedule', 'waitlist', 'review', 'under review', 'put']
-    
     status_keywords = {
-        'accept': 'accepted', 'accepted': 'accepted', 'approve': 'accepted', 'approved': 'accepted',
-        'reject': 'rejected', 'rejected': 'rejected', 'deny': 'rejected', 'denied': 'rejected',
-        'waitlist': 'waitlisted', 'waitlisted': 'waitlisted',
-        'schedule': 'interview_scheduled', 'scheduled': 'interview_scheduled', 'interview': 'interview_scheduled',
-        'review': 'under_review', 'under review': 'under_review',
-        'pending': 'pending', 'withdraw': 'withdrawn', 'withdrawn': 'withdrawn'
+        'accept': 'ACCEPTED',
+        'accepted': 'ACCEPTED',
+        'approve': 'ACCEPTED',
+        'approved': 'ACCEPTED',
+        'reject': 'REJECTED',
+        'rejected': 'REJECTED',
+        'deny': 'REJECTED',
+        'denied': 'REJECTED',
+        'waitlist': 'WAITLISTED',
+        'waitlisted': 'WAITLISTED',
+        'schedule': 'INTERVIEW_SCHEDULED',
+        'scheduled': 'INTERVIEW_SCHEDULED',
+        'interview': 'INTERVIEW_SCHEDULED',
+        'review': 'UNDER_REVIEW',
+        'under review': 'UNDER_REVIEW',
+        'submitted': 'SUBMITTED',
+        'pending': 'SUBMITTED',
+        'withdraw': 'WITHDRAWN',
+        'withdrawn': 'WITHDRAWN'
     }
     
     # Check if this looks like an update command
@@ -113,102 +119,100 @@ def parse_update_command(message: str, applications: list) -> dict:
     if not is_update:
         return None
     
+    # Try to find which application
     target_app = None
     best_match_score = 0
     
+    # Look for applicant name or email in the message
     for app in applications:
-        # Construct names safely
-        applicant_name = (app.get('applicantName') or app.get('name') or app.get('userName') or '').lower()
-        applicant_email = (app.get('applicantEmail') or app.get('email') or '').lower()
+        # Try various field names for applicant info
+        applicant_name = (
+            app.get('applicantName') or 
+            app.get('name') or 
+            app.get('userName') or 
+            app.get('studentName') or 
+            ''
+        ).lower()
+        
+        applicant_email = (
+            app.get('applicantEmail') or 
+            app.get('email') or 
+            app.get('userEmail') or 
+            app.get('studentEmail') or 
+            ''
+        ).lower()
         
         match_score = 0
         
-        # 1. Full name match (Strongest)
+        # Check full name match
         if applicant_name and applicant_name in message_lower:
-            match_score = 100
+            match_score = len(applicant_name)
         
-        # 2. Name parts (First/Last)
-        elif applicant_name:
+        # Check individual name parts (first name, last name)
+        if applicant_name:
             name_parts = applicant_name.split()
             for part in name_parts:
-                # FIX: Allow names length 2 or more (e.g. "Al", "Jo")
-                if len(part) >= 2 and f" {part} " in f" {message_lower} ": # Boundary check
-                    match_score = max(match_score, len(part) * 2)
-                elif len(part) >= 2 and part in message_lower:
+                if len(part) > 2 and part in message_lower:
                     match_score = max(match_score, len(part))
-
-        # 3. Email match
-        if applicant_email and applicant_email in message_lower:
-            match_score = max(match_score, 50)
-        elif applicant_email:
-            prefix = applicant_email.split('@')[0]
-            if prefix and prefix in message_lower:
-                match_score = max(match_score, len(prefix))
-
+        
+        # Check email or email prefix
+        if applicant_email:
+            email_prefix = applicant_email.split('@')[0].lower()
+            if email_prefix in message_lower:
+                match_score = max(match_score, len(email_prefix))
+            if applicant_email in message_lower:
+                match_score = max(match_score, len(applicant_email))
+        
         if match_score > best_match_score:
             best_match_score = match_score
             target_app = app
-            
-    # Require a decent match to proceed (Score > 2 means at least a 3-letter match or partial)
-    # FIX: Lower threshold slightly or ensure logic holds
-    if not target_app or best_match_score < 2:
-        # Try "Everyone but X" logic (omitted for brevity, can re-add if needed)
-        pass
-
-    if not target_app:
-        print("[DEBUG] No matching application found in message.")
+    
+    # Require a minimum match quality
+    if not target_app or best_match_score < 3:
         return None
-        
-    print(f"[DEBUG] Matched application: {target_app.get('applicantName')} (Score: {best_match_score})")
-
-    # Determine the new status
+    
+    # Determine the new status - check longest keywords first
     new_status = None
-    # Check longest keywords first to match "under review" before "review"
     sorted_keywords = sorted(status_keywords.items(), key=lambda x: -len(x[0]))
     for keyword, status in sorted_keywords:
         if keyword in message_lower:
             new_status = status
             break
-            
+    
     if not new_status:
-        print("[DEBUG] No status keyword found.")
         return None
     
     return {
         'application': target_app,
         'new_status': new_status
     }
+
+
 def populate_application(db, app):
     """Populate application with applicant name/email by looking up user."""
     app_copy = dict(app)
     app_copy['_id'] = str(app_copy.get('_id', ''))
     
-    # helper to process applicant
-    applicant_field = app_copy.get('applicant')
-    if isinstance(applicant_field, dict):
-         app_copy['applicantName'] = applicant_field.get('name', '')
-         app_copy['applicantEmail'] = applicant_field.get('email', '')
-    elif applicant_field:
+    # Look up applicant info if we have an applicant ID
+    applicant_id = app_copy.get('applicant')
+    if applicant_id:
         try:
-            applicant_oid = ObjectId(applicant_field) if isinstance(applicant_field, str) else applicant_field
+            applicant_oid = ObjectId(applicant_id) if isinstance(applicant_id, str) else applicant_id
             applicant = db.users.find_one({'_id': applicant_oid}, {'passwordHash': 0})
             if applicant:
                 app_copy['applicantName'] = applicant.get('name', '')
                 app_copy['applicantEmail'] = applicant.get('email', '')
         except:
             pass
-
-    # helper to process openRole
-    role_field = app_copy.get('openRole')
-    if isinstance(role_field, dict):
-         app_copy['roleName'] = role_field.get('jobTitle', role_field.get('title', ''))
-         app_copy['clubName'] = role_field.get('clubName', '')
-    elif role_field:
+    
+    # Look up openRole info if we have an openRole ID
+    role_id = app_copy.get('openRole')
+    if role_id:
         try:
-            role_oid = ObjectId(role_field) if isinstance(role_field, str) else role_field
+            role_oid = ObjectId(role_id) if isinstance(role_id, str) else role_id
             role = db.openroles.find_one({'_id': role_oid})
             if role:
-                app_copy['roleName'] = role.get('jobTitle', role.get('title', role.get('name', '')))
+                app_copy['roleName'] = role.get('title', role.get('name', ''))
                 app_copy['clubName'] = role.get('clubName', '')
         except:
             pass
@@ -235,14 +239,17 @@ def get_mongo_context(query=None, user_email=None):
         # Get users (without sensitive data)
         users = list(db.users.find({}, {'passwordHash': 0, '_id': 0}).limit(50))
         context['users'] = users
+        print(f"[MONGO_CTX] Fetched {len(users)} users")
         
         # Get clubs from MongoDB
         clubs = list(db.clubs.find({}, {'_id': 0}).limit(50))
         context['mongo_clubs'] = clubs
+        print(f"[MONGO_CTX] Fetched {len(clubs)} clubs")
         
         # Get open roles/positions
         openroles = list(db.openroles.find({}, {'_id': 0}).limit(50))
         context['openroles'] = openroles
+        print(f"[MONGO_CTX] Fetched {len(openroles)} openroles")
         
         # Check if user is an admin and get their club's applications
         if user_email:
@@ -261,18 +268,31 @@ def get_mongo_context(query=None, user_email=None):
                 
                 # If user is an admin, get applications for their clubs
                 if 'ADMIN' in user.get('roles', []) or 'CLUB_LEADER' in user.get('roles', []):
-                    # Find clubs where this user is admin/owner
-                    # Try different possible field names for admin
+                    user_oid = user.get('_id')
+                    user_oid_str = str(user_oid)
+                    
+                    # Find clubs where this user is admin/owner/exec
+                    # Check various field names and both ObjectId + string formats
                     admin_clubs = list(db.clubs.find({
                         '$or': [
                             {'adminEmail': user_email},
                             {'ownerEmail': user_email},
+                            {'email': user_email},
                             {'admin': user_email},
                             {'admins': user_email},
-                            {'leaderId': str(user.get('_id'))},
-                            {'adminId': str(user.get('_id'))}
+                            {'admins': user_oid},           # ObjectId in admins array
+                            {'execs': user_oid},            # ObjectId in execs array
+                            {'leaderId': user_oid_str},
+                            {'adminId': user_oid_str},
                         ]
                     }))
+                    
+                    # Also check if user has adminClub field pointing to a club
+                    if not admin_clubs and user.get('adminClub'):
+                        admin_club_id = user.get('adminClub')
+                        club = db.clubs.find_one({'_id': admin_club_id if isinstance(admin_club_id, ObjectId) else ObjectId(admin_club_id)})
+                        if club:
+                            admin_clubs = [club]
                     
                     if admin_clubs:
                         context['admin_clubs'] = [{
@@ -282,16 +302,13 @@ def get_mongo_context(query=None, user_email=None):
                         } for c in admin_clubs]
                         
                         # Get applications for these clubs
-                        club_ids_str = [str(c.get('_id')) for c in admin_clubs]
-                        club_ids_obj = [c.get('_id') for c in admin_clubs]
+                        club_ids = [str(c.get('_id')) for c in admin_clubs]
                         club_names = [c.get('name') for c in admin_clubs]
                         club_slugs = [c.get('slug') for c in admin_clubs]
                         
                         applications_raw = list(db.applications.find({
                             '$or': [
-                                # Match both string and ObjectId variants of clubId
-                                {'clubId': {'$in': club_ids_str}},
-                                {'clubId': {'$in': club_ids_obj}},
+                                {'clubId': {'$in': club_ids}},
                                 {'club': {'$in': club_names}},
                                 {'clubSlug': {'$in': club_slugs}}
                             ]
@@ -301,12 +318,17 @@ def get_mongo_context(query=None, user_email=None):
                         applications = [populate_application(db, app) for app in applications_raw]
                         
                         context['club_applications'] = applications
+                        print(f"[MONGO_CTX] Admin clubs: {[c.get('name') for c in admin_clubs]}")
+                        print(f"[MONGO_CTX] Fetched {len(applications)} club_applications")
+                        for a in applications:
+                            print(f"[MONGO_CTX]   - {a.get('applicantName')} ({a.get('applicantEmail')}), status={a.get('status')}, _id={a.get('_id')}")
                     else:
                         # Admin but no specific club - show all applications
                         if 'ADMIN' in user.get('roles', []):
                             applications_raw = list(db.applications.find({}).limit(100))
                             applications = [populate_application(db, app) for app in applications_raw]
                             context['all_applications'] = applications
+                            print(f"[MONGO_CTX] Global admin: fetched {len(applications)} all_applications")
             
             elif demo_admin:
                 # Demo mode: user not in MongoDB but is a recognized demo admin
@@ -334,7 +356,6 @@ def get_mongo_context(query=None, user_email=None):
                     
                     # Get applications for these clubs via openRoles
                     club_ids = [str(c.get('_id')) for c in admin_clubs]
-                    club_ids_obj = [c.get('_id') for c in admin_clubs]
                     club_names = [c.get('name') for c in admin_clubs]
                     club_object_ids = [c.get('_id') for c in admin_clubs]
                     
@@ -358,9 +379,7 @@ def get_mongo_context(query=None, user_email=None):
                                 {'openRole': {'$in': role_ids}},
                                 {'openRole': {'$in': role_id_strs}},
                                 {'roleId': {'$in': role_id_strs}},
-                                # Match clubId stored as either ObjectId or string
                                 {'clubId': {'$in': club_ids}},
-                                {'clubId': {'$in': club_ids_obj}},
                                 {'club': {'$in': club_names}}
                             ]
                         }).limit(100))
@@ -369,13 +388,16 @@ def get_mongo_context(query=None, user_email=None):
                         applications_raw = list(db.applications.find({
                             '$or': [
                                 {'clubId': {'$in': club_ids}},
-                                {'clubId': {'$in': club_ids_obj}},
                                 {'club': {'$in': club_names}}
                             ]
                         }).limit(100))
                     
                     applications = [populate_application(db, app) for app in applications_raw]
                     context['club_applications'] = applications
+                    print(f"[MONGO_CTX] Demo admin clubs: {[c.get('name') for c in admin_clubs]}")
+                    print(f"[MONGO_CTX] Fetched {len(applications)} club_applications (via openRoles)")
+                    for a in applications:
+                        print(f"[MONGO_CTX]   - {a.get('applicantName')} ({a.get('applicantEmail')}), status={a.get('status')}, _id={a.get('_id')}")
                 else:
                     # Demo admin but club not found - show all applications as fallback
                     context['admin_clubs'] = [{'name': demo_club_name, 'slug': demo_club_name.lower().replace(' ', '-'), 'id': 'demo'}]
@@ -588,40 +610,6 @@ def get_clubs():
     recruiting = request.args.get('recruiting')
     min_members = request.args.get('min_members')
 
-    # Prioritize MongoDB
-    try:
-        db = get_mongo_db()
-        query = {}
-        if tag:
-            query['tags'] = {'$regex': tag, '$options': 'i'}
-        if recruiting is not None:
-            query['isRecruiting'] = recruiting.lower() == 'true'
-        
-        mongo_clubs = list(db.clubs.find(query))
-        
-        clubs = []
-        for c in mongo_clubs:
-            member_count = c.get('memberCount', c.get('member_count', 0))
-            if min_members and member_count < int(min_members):
-                continue
-            clubs.append({
-                'id': str(c.get('_id')),
-                'slug': c.get('slug', ''),
-                'name': c.get('name', ''),
-                'description': c.get('description', ''),
-                'tags': c.get('tags', ''),
-                'member_count': member_count,
-                'is_recruiting': c.get('isRecruiting', c.get('is_recruiting', False)),
-                'created_at': str(c.get('createdAt', c.get('created_at', ''))),
-                'logo': c.get('logo', ''),
-            })
-        
-        if clubs:
-            return jsonify(clubs)
-    except Exception as e:
-        print(f"MongoDB clubs error: {e}")
-    
-    # Fallback to Snowflake
     sql = 'SELECT * FROM clubs WHERE 1=1'
     if tag:
         sql += f" AND LOWER(tags) LIKE '%{tag.lower()}%'"
@@ -638,80 +626,11 @@ def get_clubs():
 # GET /clubs/<slug>  – single club by slug
 @app.route('/clubs/<slug>')
 def get_club(slug):
-    # Prioritize MongoDB
-    try:
-        db = get_mongo_db()
-        c = db.clubs.find_one({'$or': [{'slug': slug}, {'name': {'$regex': f'^{slug}$', '$options': 'i'}}]})
-        if c:
-            return jsonify({
-                'id': str(c.get('_id')),
-                'slug': c.get('slug', ''),
-                'name': c.get('name', ''),
-                'description': c.get('description', ''),
-                'tags': c.get('tags', ''),
-                'member_count': c.get('memberCount', c.get('member_count', 0)),
-                'is_recruiting': c.get('isRecruiting', c.get('is_recruiting', False)),
-                'created_at': str(c.get('createdAt', c.get('created_at', ''))),
-                'logo': c.get('logo', ''),
-            })
-    except Exception as e:
-        print(f"MongoDB club error: {e}")
-    
-    # Fallback to Snowflake
     try:
         rows = query_snowflake("SELECT * FROM clubs WHERE slug = %s", (slug,))
         if not rows:
             return jsonify({'error': 'Club not found'}), 404
         return jsonify(rows[0])
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# GET /clubs/<club_slug>/positions  – positions for a club
-@app.route('/clubs/<club_slug>/positions')
-def get_club_positions(club_slug):
-    # Prioritize MongoDB openroles
-    try:
-        db = get_mongo_db()
-        club = db.clubs.find_one({'$or': [{'slug': club_slug}, {'name': {'$regex': club_slug, '$options': 'i'}}]})
-        if club:
-            club_id_str = str(club.get('_id'))
-            
-            roles = list(db.openroles.find({
-                '$or': [
-                    {'club': club.get('_id')},
-                    {'club': club_id_str},
-                    {'clubId': club_id_str},
-                ]
-            }))
-            
-            positions = []
-            for role in roles:
-                positions.append({
-                    'id': str(role.get('_id')),
-                    'clubId': club_id_str,
-                    'title': role.get('jobTitle') or role.get('title') or role.get('name', ''),
-                    'description': role.get('description', ''),
-                    'requirements': role.get('requirements', []),
-                    'deadline': str(role.get('deadline', '')),
-                    'is_open': role.get('isOpen', True),
-                    'applicant_count': role.get('applicantCount', 0),
-                    'created_at': str(role.get('createdAt', '')),
-                })
-            
-            if positions:
-                return jsonify(positions)
-    except Exception as e:
-        print(f"MongoDB positions error: {e}")
-    
-    # Fallback to Snowflake
-    try:
-        club_rows = query_snowflake("SELECT id FROM clubs WHERE slug = %s", (club_slug,))
-        if club_rows:
-            club_id = club_rows[0]['id']
-            positions = query_snowflake("SELECT * FROM positions WHERE club_id = %s", (club_id,))
-            return jsonify(positions)
-        return jsonify([])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -766,41 +685,6 @@ def get_positions():
     club_id = request.args.get('club_id')
     is_open = request.args.get('is_open')
 
-    # Prioritize MongoDB openroles
-    try:
-        db = get_mongo_db()
-        query = {}
-        if club_id:
-            try:
-                query['$or'] = [{'club': ObjectId(club_id)}, {'club': club_id}, {'clubId': club_id}]
-            except:
-                query['$or'] = [{'club': club_id}, {'clubId': club_id}]
-        if is_open is not None:
-            query['isOpen'] = is_open.lower() == 'true'
-        
-        roles = list(db.openroles.find(query))
-        positions = []
-        for role in roles:
-            club_ref = role.get('club')
-            club_id_str = str(club_ref) if club_ref else ''
-            positions.append({
-                'id': str(role.get('_id')),
-                'club_id': club_id_str,
-                'title': role.get('jobTitle') or role.get('title') or role.get('name', ''),
-                'description': role.get('description', ''),
-                'requirements': role.get('requirements', []),
-                'deadline': str(role.get('deadline', '')),
-                'is_open': role.get('isOpen', True),
-                'applicant_count': role.get('applicantCount', 0),
-                'created_at': str(role.get('createdAt', '')),
-            })
-        
-        if positions:
-            return jsonify(positions)
-    except Exception as e:
-        print(f"MongoDB positions error: {e}")
-    
-    # Fallback to Snowflake
     sql = 'SELECT * FROM positions WHERE 1=1'
     if club_id:
         sql += f" AND club_id = '{club_id}'"
@@ -815,99 +699,11 @@ def get_positions():
 # GET /positions/<position_id>  – single position
 @app.route('/positions/<position_id>')
 def get_position(position_id):
-    # Prioritize MongoDB openroles
-    try:
-        db = get_mongo_db()
-        role = None
-        try:
-            role = db.openroles.find_one({'_id': ObjectId(position_id)})
-        except:
-            pass
-        
-        if role:
-            club_ref = role.get('club')
-            club_id_str = str(club_ref) if club_ref else ''
-            return jsonify({
-                'id': str(role.get('_id')),
-                'club_id': club_id_str,
-                'title': role.get('jobTitle') or role.get('title') or role.get('name', ''),
-                'description': role.get('description', ''),
-                'requirements': role.get('requirements', []),
-                'deadline': str(role.get('deadline', '')),
-                'is_open': role.get('isOpen', True),
-                'applicant_count': role.get('applicantCount', 0),
-                'created_at': str(role.get('createdAt', '')),
-            })
-    except Exception as e:
-        print(f"MongoDB position error: {e}")
-    
-    # Fallback to Snowflake
     try:
         rows = query_snowflake("SELECT * FROM positions WHERE id = %s", (position_id,))
         if not rows:
             return jsonify({'error': 'Position not found'}), 404
         return jsonify(rows[0])
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# GET /positions/<position_id>/form-schema  – get application form schema
-@app.route('/positions/<position_id>/form-schema')
-def get_form_schema(position_id):
-    """Get application form schema for a position."""
-    try:
-        db = get_mongo_db()
-        
-        # Try to find the open role in MongoDB
-        role = None
-        try:
-            role = db.openroles.find_one({'_id': ObjectId(position_id)})
-        except:
-            pass
-        
-        if not role:
-            # Check Snowflake positions
-            rows = query_snowflake("SELECT * FROM positions WHERE id = %s", (position_id,))
-            if rows:
-                # Return a default form schema based on Snowflake position
-                pos = rows[0]
-                return jsonify({
-                    'id': f'fs-{position_id}',
-                    'positionId': position_id,
-                    'questions': [
-                        {'id': 'q1', 'label': 'Why do you want to join?', 'type': 'long_text', 'required': True, 'placeholder': 'Tell us about your motivation...'},
-                        {'id': 'q2', 'label': 'Relevant experience?', 'type': 'long_text', 'required': True, 'placeholder': 'Describe your relevant skills and experience...'},
-                    ],
-                    'updatedAt': pos.get('created_at', '')
-                })
-            return jsonify({'error': 'Position not found'}), 404
-        
-        # Build form schema from MongoDB openRole
-        questions = []
-        app_questions = role.get('applicationQuestions', [])
-        
-        for i, q in enumerate(app_questions):
-            questions.append({
-                'id': f'q{i+1}',
-                'label': q if isinstance(q, str) else q.get('label', q.get('question', '')),
-                'type': 'long_text',
-                'required': True,
-                'placeholder': f'Enter your answer...'
-            })
-        
-        # Add default questions if none exist
-        if not questions:
-            questions = [
-                {'id': 'q1', 'label': 'Why do you want to join?', 'type': 'long_text', 'required': True, 'placeholder': 'Tell us about your motivation...'},
-                {'id': 'q2', 'label': 'Relevant experience?', 'type': 'long_text', 'required': True, 'placeholder': 'Describe your relevant skills and experience...'},
-            ]
-        
-        return jsonify({
-            'id': f'fs-{position_id}',
-            'positionId': position_id,
-            'questions': questions,
-            'updatedAt': str(role.get('updatedAt', role.get('createdAt', '')))
-        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1038,53 +834,53 @@ def get_club_context():
 
 def build_system_prompt(context, mongo_context=None):
     """Build system prompt with current data context from Snowflake and MongoDB."""
-    clubs_str = json.dumps(context.get('clubs', []), indent=2, default=str)
-    positions_str = json.dumps(context.get('positions', []), indent=2, default=str)
-    
-    # Add MongoDB context if available
+
+    # Only use MongoDB context for clubs and positions
+    mongo_clubs_str = ""
+    openroles_str = ""
     mongo_section = ""
     admin_section = ""
-    
+
     if mongo_context:
+        if 'mongo_clubs' in mongo_context and mongo_context['mongo_clubs']:
+            mongo_clubs_str = json.dumps(mongo_context['mongo_clubs'], indent=2, default=str)
+        if 'openroles' in mongo_context and mongo_context['openroles']:
+            openroles_str = json.dumps(mongo_context['openroles'], indent=2, default=str)
+
         # Current user info
         if 'current_user' in mongo_context:
             user = mongo_context['current_user']
             mongo_section += f"\n\nCurrent user: {user.get('name', 'Unknown')} ({user.get('email')}) - Roles: {', '.join(user.get('roles', []))}"
-        
+
         if 'users' in mongo_context and mongo_context['users']:
             users_str = json.dumps(mongo_context['users'], indent=2, default=str)
             mongo_section += f"\n\nRegistered users on the platform (from MongoDB):\n{users_str}"
-        if 'mongo_clubs' in mongo_context and mongo_context['mongo_clubs']:
-            mongo_clubs_str = json.dumps(mongo_context['mongo_clubs'], indent=2, default=str)
-            mongo_section += f"\n\nClubs data (from MongoDB):\n{mongo_clubs_str}"
-        if 'openroles' in mongo_context and mongo_context['openroles']:
-            openroles_str = json.dumps(mongo_context['openroles'], indent=2, default=str)
-            mongo_section += f"\n\nOpen roles/positions (from MongoDB):\n{openroles_str}"
-        
+
         # Admin-specific: applications to their clubs
         if 'admin_clubs' in mongo_context:
             admin_clubs_str = json.dumps(mongo_context['admin_clubs'], indent=2, default=str)
             admin_section += f"\n\n=== ADMIN ACCESS ===\nYou are an admin for these clubs:\n{admin_clubs_str}"
-            
+
             if 'club_applications' in mongo_context and mongo_context['club_applications']:
                 apps_str = json.dumps(mongo_context['club_applications'], indent=2, default=str)
                 admin_section += f"\n\nApplications to your clubs:\n{apps_str}"
             else:
                 admin_section += "\n\nNo applications found for your clubs yet."
-        
+
         # Global admin: all applications
         if 'all_applications' in mongo_context and mongo_context['all_applications']:
             apps_str = json.dumps(mongo_context['all_applications'], indent=2, default=str)
             admin_section += f"\n\n=== ADMIN ACCESS ===\nAll applications on the platform:\n{apps_str}"
-    
+
     return f"""You are a helpful assistant for McGill University's club recruitment platform.
 You help students find clubs and positions that match their interests.
 
-Here is the current data about clubs (from Snowflake):
-{clubs_str}
+Here is the current data about clubs (from MongoDB):
+{mongo_clubs_str if mongo_clubs_str else 'No clubs found in MongoDB.'}
 
-Here are the current open positions (from Snowflake):
-{positions_str}{mongo_section}{admin_section}
+Here are the current open roles/positions (from MongoDB):
+{openroles_str if openroles_str else 'No open roles found in MongoDB.'}
+{mongo_section}{admin_section}
 
 Guidelines:
 - Be friendly and helpful
@@ -1093,10 +889,8 @@ Guidelines:
 - Always mention relevant deadlines for positions
 - If a user asks about applying, guide them but note you cannot submit applications for them
 - Keep responses concise but informative
-- You have access to data from both Snowflake and MongoDB - use it to provide accurate, personalized responses
-- If the user is an admin and asks about "applications" (student submissions), ONLY show data from the "Applications to your clubs" section. DO NOT show "Open roles/positions" as if they were applications. Open roles are what students apply TO. Applications are what students HAVE SUBMITTED.
-- Never include the raw JSON data (arrays or objects) from this prompt in your replies. Use it only as internal context, and respond in natural language summaries and bullet points.
-- Do not wrap data in code blocks or start responses with '[' or '{'.
+- You have access to data from MongoDB - use it to provide accurate, personalized responses
+- If the user is an admin and asks about applications to their club, show them the relevant application data
 - For admin users, you can summarize application stats, list applicants, and provide insights about applications
 
 ADMIN UPDATE CAPABILITIES:
@@ -1112,7 +906,7 @@ Example user commands you can process:
 - "Move Bob to the interview stage"
 - "Waitlist the application from jane@email.com"
 
-Valid statuses: pending, under_review, interview_scheduled, accepted, rejected, waitlisted, withdrawn
+Valid statuses: SUBMITTED, UNDER_REVIEW, INTERVIEW_SCHEDULED, ACCEPTED, REJECTED, WAITLISTED, WITHDRAWN
 
 When a status update is requested, the system will automatically update the database and prepend a confirmation message. Simply acknowledge the change and offer to help with anything else."""
 
@@ -1153,82 +947,101 @@ def call_cortex_llm(prompt, conversation_history=None):
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Chat endpoint."""
+    """Chat endpoint using Snowflake Cortex with Mistral."""
+    data = request.json
+    user_message = data.get('message', '')
+    session_id = data.get('session_id', 'default')
+    user_email = data.get('user_email')  # Optional: for admin-specific features
+    
+    if not user_message:
+        return jsonify({'error': 'Message is required'}), 400
+    
     try:
-        data = request.json
-        user_message = data.get('message', '')
-        session_id = data.get('session_id', 'default')
-        user_email = data.get('user_email')
-        
-        if not user_message:
-            return jsonify({'error': 'Message is required'}), 400
-        
-        # 1. Initialize Session
+        # Get or create session history
         if session_id not in chat_sessions:
             chat_sessions[session_id] = {
                 'history': [],
-                'context': {}, # Lazy load snowflake if needed
+                'context': get_club_context(),
                 'mongo_context': get_mongo_context(user_message, user_email),
                 'user_email': user_email
             }
         
         session = chat_sessions[session_id]
         
-        # 2. Refresh Context
+        # Always refresh mongo context so applications are up-to-date
         if user_email:
             session['mongo_context'] = get_mongo_context(user_message, user_email)
             session['user_email'] = user_email
-            
-        # 3. Handle Admin Actions
+            print(f"[DEBUG] Refreshed mongo_context keys: {list(session['mongo_context'].keys())}")
+            print(f"[DEBUG] current_user: {session['mongo_context'].get('current_user')}")
+            print(f"[DEBUG] admin_clubs: {session['mongo_context'].get('admin_clubs')}")
+            print(f"[DEBUG] club_applications count: {len(session['mongo_context'].get('club_applications', []))}")
+            print(f"[DEBUG] all_applications count: {len(session['mongo_context'].get('all_applications', []))}")
+        
+        # Check for application update commands (admin only)
         action_result = None
         if user_email:
             mongo_ctx = session.get('mongo_context', {})
             applications = mongo_ctx.get('club_applications', []) or mongo_ctx.get('all_applications', [])
             
-            print(f"[DEBUG] Apps found for {user_email}: {len(applications)}")
+            print(f"[DEBUG] User email: {user_email}")
+            print(f"[DEBUG] Found {len(applications)} applications")
+            if applications:
+                print(f"[DEBUG] First app keys: {applications[0].keys() if applications else 'none'}")
             
             if applications:
                 update_cmd = parse_update_command(user_message, applications)
+                print(f"[DEBUG] Parse result: {update_cmd}")
                 
                 if update_cmd:
                     app_to_update = update_cmd['application']
-                    app_id = app_to_update.get('_id') or app_to_update.get('id')
-                    new_status = update_cmd['new_status']
+                    app_id = app_to_update.get('_id') or app_to_update.get('id') or app_to_update.get('applicationId')
+                    print(f"[DEBUG] App ID to update: {app_id}")
                     
                     if app_id:
-                        result = update_application(str(app_id), {'status': new_status}, user_email)
+                        result = update_application(str(app_id), {'status': update_cmd['new_status']}, user_email)
+                        print(f"[DEBUG] Update result: {result}")
                         
-                        applicant_name = app_to_update.get('applicantName', 'the applicant')
                         if result['success']:
-                            action_result = f"SYSTEM SUCCESS: Updated application for {applicant_name} to '{new_status}'."
-                            # Refresh context so LLM sees new state
+                            applicant_name = (
+                                app_to_update.get('applicantName') or 
+                                app_to_update.get('name') or 
+                                app_to_update.get('userName') or 
+                                'the applicant'
+                            )
+                            action_result = f"✅ I've updated the application for {applicant_name} to status: **{update_cmd['new_status']}**."
+                            # Refresh the mongo context to get updated data
                             session['mongo_context'] = get_mongo_context(user_message, user_email)
                         else:
-                            action_result = f"SYSTEM ERROR: Failed to update {applicant_name}. Reason: {result['error']}"
+                            action_result = f"❌ Could not update the application: {result['error']}"
+                    else:
+                        print(f"[DEBUG] No app ID found in application: {app_to_update}")
         
-        # 4. Construct Prompt
-        # Format history string manually
-        history_str = ""
-        for msg in session['history']:
-            role = "User" if msg['role'] == 'user' else "Assistant"
-            history_str += f"{role}: {msg['content']}\n\n"
-            
-        # Add current message with invisible system note if action performed
-        current_input = f"User: {user_message}"
+        # Build prompt with context from both Snowflake and MongoDB
+        system_prompt = build_system_prompt(session['context'], session.get('mongo_context'))
+        
+        # If an action was performed, include it in the prompt
         if action_result:
-            current_input = f"[System Notification: {action_result}]\n" + current_input
-            
-        # (Assuming build_system_prompt implementation exists as per previous)
-        # Using a simple prompt here for the fix demo
-        sys_prompt = "You are a club admin assistant. Help manage applications."
-        full_prompt = f"{sys_prompt}\n\nHistory:\n{history_str}\n{current_input}\nAssistant:"
+            full_prompt = f"{system_prompt}\n\nSystem note: {action_result}\n\nUser message: {user_message}\n\nPlease confirm the action to the user and offer any follow-up assistance."
+        elif not session['history']:
+            full_prompt = f"{system_prompt}\n\n{user_message}"
+        else:
+            full_prompt = user_message
         
-        response = call_cortex_llm(full_prompt)
+        # Call Cortex LLM
+        response = call_cortex_llm(full_prompt, session['history'])
         
-        # 5. Update History
+        # If we performed an action, prepend the result to the response
+        if action_result:
+            response = f"{action_result}\n\n{response}"
+        
+        # Update history
         session['history'].append({'role': 'user', 'content': user_message})
         session['history'].append({'role': 'assistant', 'content': response})
-        if len(session['history']) > 20: session['history'] = session['history'][-20:]
+        
+        # Keep history manageable (last 10 exchanges)
+        if len(session['history']) > 20:
+            session['history'] = session['history'][-20:]
         
         return jsonify({
             'response': response,
@@ -1237,8 +1050,9 @@ def chat():
         })
         
     except Exception as e:
-        print(f"Chat Error: {e}")
         return jsonify({'error': str(e)}), 500
+
+
 @app.route('/chat/reset', methods=['POST'])
 def reset_chat():
     """Reset a chat session."""
@@ -1644,4 +1458,4 @@ def bulk_update_status():
 
 
 if __name__ == '__main__':
-    app.run(debug=False, port=5001)
+    app.run(debug=True, port=5001)
