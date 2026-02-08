@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
-import { Check, X, Pencil, Save, Users, Settings, UserPlus } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
+import { Check, X, Pencil, Save, Users, Settings, UserPlus, MessageSquare } from 'lucide-react';
 import { AnimatedPage } from '../../components/motion/AnimatedPage';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -192,6 +192,25 @@ export function ClubDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Forum Link */}
+        {isApprovedExec && clubId && (
+          <Link to={`/clubs/${clubId}/forum?from=exec`} className="block">
+            <Card hover>
+              <CardContent className="py-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-100 to-calm-100">
+                    <MessageSquare size={20} className="text-brand-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-warmGray-800">Club Forum</h3>
+                    <p className="text-xs text-warmGray-500">Discuss with applicants and fellow leaders</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         {/* My Profile */}
         {isApprovedExec && (

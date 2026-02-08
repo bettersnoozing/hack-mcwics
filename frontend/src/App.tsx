@@ -51,7 +51,7 @@ export default function App() {
                 <Route path="/app" element={<Dashboard />} />
                 <Route path="/app/apply/:clubId/:openRoleId" element={<ApplicationForm />} />
                 <Route path="/app/applications/:applicationId" element={<ApplicationView />} />
-                <Route path="/app/forum/:applicationGroupId" element={<Forum />} />
+                <Route path="/clubs/:clubId/forum" element={<Forum />} />
 
                 {/* Exec */}
                 <Route path="/exec/auth" element={<ExecAuthPage />} />

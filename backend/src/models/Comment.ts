@@ -7,6 +7,7 @@ export interface IComment extends Document {
 	author: Types.ObjectId;
 	body: string;
 	deleted: boolean;
+	stars?: number;
 }
 
 const commentSchema = new Schema<IComment>(
@@ -16,6 +17,7 @@ const commentSchema = new Schema<IComment>(
 		author: { type: Types.ObjectId, ref: "User", required: true },
 		body: { type: String, required: true },
 		deleted: { type: Boolean, default: false },
+		stars: { type: Number, min: 1, max: 5 },
 	},
 	{ timestamps: true }
 );

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronDown, Check, X, Search, Columns3, Download, ChevronUp, ChevronsUpDown,
+  ArrowLeft, ChevronDown, Check, X, Search, Columns3, Download, ChevronUp, ChevronsUpDown, Star,
 } from 'lucide-react';
 import { AnimatedPage } from '../../components/motion/AnimatedPage';
 import { PageContainer } from '../../components/layout/PageContainer';
@@ -142,6 +142,7 @@ const COLUMNS = [
   { key: 'applicantName', label: 'Applicant', defaultVisible: true },
   { key: 'applicantEmail', label: 'Email', defaultVisible: true },
   { key: 'jobTitle', label: 'Role', defaultVisible: true },
+  { key: 'rating', label: 'Rating', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'createdAt', label: 'Submitted', defaultVisible: true },
   { key: 'updatedAt', label: 'Updated', defaultVisible: false },
@@ -223,7 +224,10 @@ export function Applications() {
   const handleStatusChange = async (appId: string, status: AppStatus) => {
     try {
       const updated = await applicationApi.updateStatus(appId, status);
-      setAllApps((prev) => prev.map((a) => (a._id === appId ? updated : a)));
+      setAllApps((prev) => prev.map((a) => {
+        if (a._id !== appId) return a;
+        return { ...updated, reviewAvgStars: a.reviewAvgStars, reviewStarsCount: a.reviewStarsCount };
+      }));
       showToast(`Status updated to ${statusLabel[status]}`);
     } catch { /* ignore */ }
   };
@@ -344,6 +348,7 @@ export function Applications() {
                   {visibleCols.has('applicantName') && <th className="px-4 py-3 text-left"><button onClick={() => toggleSort('applicantName')} className="inline-flex items-center gap-1 font-medium text-warmGray-600 cursor-pointer">Applicant <SortIcon k="applicantName" /></button></th>}
                   {visibleCols.has('applicantEmail') && <th className="px-4 py-3 text-left font-medium text-warmGray-500">Email</th>}
                   {visibleCols.has('jobTitle') && <th className="px-4 py-3 text-left"><button onClick={() => toggleSort('jobTitle')} className="inline-flex items-center gap-1 font-medium text-warmGray-600 cursor-pointer">Role <SortIcon k="jobTitle" /></button></th>}
+                  {visibleCols.has('rating') && <th className="px-4 py-3 text-left font-medium text-warmGray-500">Rating</th>}
                   {visibleCols.has('status') && <th className="px-4 py-3 text-left"><button onClick={() => toggleSort('status')} className="inline-flex items-center gap-1 font-medium text-warmGray-600 cursor-pointer">Status <SortIcon k="status" /></button></th>}
                   {visibleCols.has('createdAt') && <th className="px-4 py-3 text-left"><button onClick={() => toggleSort('createdAt')} className="inline-flex items-center gap-1 font-medium text-warmGray-600 cursor-pointer">Submitted <SortIcon k="createdAt" /></button></th>}
                   {visibleCols.has('updatedAt') && <th className="px-4 py-3 text-left font-medium text-warmGray-500">Updated</th>}
@@ -362,6 +367,19 @@ export function Applications() {
                     {visibleCols.has('applicantName') && <td className="px-4 py-3 font-medium text-warmGray-800">{app.applicant.name}</td>}
                     {visibleCols.has('applicantEmail') && <td className="px-4 py-3 text-warmGray-500">{app.applicant.email}</td>}
                     {visibleCols.has('jobTitle') && <td className="px-4 py-3 text-warmGray-700">{app.openRole.jobTitle}</td>}
+                    {visibleCols.has('rating') && (
+                      <td className="px-4 py-3 text-warmGray-500">
+                        {app.reviewStarsCount && app.reviewStarsCount > 0 && app.reviewAvgStars != null ? (
+                          <span className="inline-flex items-center gap-1 text-sm">
+                            <Star size={14} className="text-amber-400 fill-amber-400" />
+                            <span className="font-medium text-warmGray-700">{app.reviewAvgStars}</span>
+                            <span className="text-xs text-warmGray-400">({app.reviewStarsCount})</span>
+                          </span>
+                        ) : (
+                          <span className="text-warmGray-300">&mdash;</span>
+                        )}
+                      </td>
+                    )}
                     {visibleCols.has('status') && (
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <StatusDropdown current={app.status} onChange={(s) => handleStatusChange(app._id, s)} />

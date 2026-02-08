@@ -6,6 +6,8 @@ import clubRouter from './routes/club.routes.ts';
 import openRoleRouter from './routes/openRole.routes.ts';
 import applicationRouter from './routes/application.routes.ts';
 import discoverRouter from './routes/discover.routes.ts';
+import threadRouter from './routes/thread.routes.ts';
+import commentRouter from './routes/comment.routes.ts';
 import { errorHandler } from './middleware/errorHandler.ts';
 
 const app = express();
@@ -25,6 +27,8 @@ app.use('/clubs', clubRouter);
 app.use('/open-roles', openRoleRouter);
 app.use('/applications', applicationRouter);
 app.use('/discover', discoverRouter);
+app.use('/', threadRouter);
+app.use('/comments', commentRouter);
 
 // Global error handler (must be after routes)
 app.use(errorHandler);
