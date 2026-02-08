@@ -17,6 +17,11 @@ export interface IUser extends Document {
   name: string;
   passwordHash: string;
   roles: Role[];
+  bio?: string;
+  profilePhotoUrl?: string;
+  adminClub?: Types.ObjectId;
+  execPosition?: string;
+  studentId?: string;
 }
 
 const userSchema = new Schema<IUser>(
@@ -29,6 +34,11 @@ const userSchema = new Schema<IUser>(
       enum: Object.values(Role),
       default: [Role.STUDENT],
     },
+    bio: { type: String, default: "" },
+    profilePhotoUrl: { type: String, default: "" },
+    adminClub: { type: Schema.Types.ObjectId, ref: "Club" },
+    execPosition: { type: String, default: "" },
+    studentId: { type: String, default: "" },
   },
   { timestamps: true }
 );
