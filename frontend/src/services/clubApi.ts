@@ -23,6 +23,7 @@ export interface ClubInfo {
   description: string;
   email?: string;
   website?: string;
+  tags?: string[];
   execs: string[];
   admins: string[];
 }
@@ -59,7 +60,7 @@ export const clubApi = {
     profilePhotoUrl?: string;
   }) => request<ClubInfo>('/clubs', { method: 'POST', body: JSON.stringify(data) }),
 
-  updateClub: (clubId: string, data: { description?: string; email?: string; website?: string }) =>
+  updateClub: (clubId: string, data: { description?: string; email?: string; website?: string; tags?: string[] }) =>
     request<ClubInfo>(`/clubs/${clubId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   getRoster: (clubId: string) => request<RosterMember[]>(`/clubs/${clubId}/roster`),

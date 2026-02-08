@@ -111,16 +111,26 @@ export async function createClub(req: Request, res: Response) {
 export async function updateClub(req: Request, res: Response) {
   try {
     const clubId = req.params.clubId as string;
-    const { description, email, website } = req.body as {
-      description?: string;
-      email?: string;
-      website?: string;
+        const { description, email, website, tags } = req.body as {
+          description?: string;
+          email?: string;
+          website?: string;
+          tags?: string[];
     };
 
     const update: Record<string, unknown> = {};
     if (description !== undefined) update.description = description.trim();
     if (email !== undefined) update.email = email.trim();
     if (website !== undefined) update.website = website.trim();
+        if (tags !== undefined) {
+          if (!Array.isArray(tags)) {
+            return res.status(400).json({ message: "Tags must be an array of strings" });
+          }
+          const cleanedTags = tags
+            .map((tag) => (typeof tag === "string" ? tag.trim() : ""))
+            .filter((tag) => tag.length > 0);
+          update.tags = Array.from(new Set(cleanedTags));
+        }
 
     if (!Object.keys(update).length) return res.status(400).json({ message: "No fields to update" });
 

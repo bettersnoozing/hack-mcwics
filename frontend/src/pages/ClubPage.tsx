@@ -77,6 +77,15 @@ export function ClubPage() {
               {club.isRecruiting && <Badge variant="success">Recruiting</Badge>}
             </div>
             <p className="mt-2 text-warmGray-500">{club.description}</p>
+            {(club.tags ?? []).length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {club.tags!.map((tag) => (
+                  <Badge key={tag} variant="info">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-warmGray-400">
               {club.email && (
                 <a href={`mailto:${club.email}`} className="flex items-center gap-1 hover:text-warmGray-600 transition-colors">

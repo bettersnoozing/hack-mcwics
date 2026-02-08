@@ -32,6 +32,7 @@ export async function discoverClubs(_req: Request, res: Response) {
         description: club.description ?? "",
         email: club.email,
         website: club.website,
+        tags: club.tags ?? [],
         isRecruiting: openRoleCount > 0,
         openRoleCount,
       };
@@ -68,6 +69,7 @@ export async function discoverClubDetail(req: Request, res: Response) {
       description: club.description ?? "",
       email: club.email,
       website: club.website,
+      tags: club.tags ?? [],
       execs: club.execs,
       isRecruiting: roles.length > 0,
       openRoleCount: roles.length,
