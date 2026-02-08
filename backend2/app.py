@@ -1,11 +1,13 @@
 import os
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import snowflake.connector
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for frontend requests
 
 def get_snowflake_conn(use_db=True):
     params = dict(
@@ -166,10 +168,6 @@ def init_snowflake_app():
         return jsonify({'recruitment_chat_view': rows})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
 
 
 #  CLUBS
@@ -380,3 +378,7 @@ def recommend():
         return jsonify({'recommended_clubs': clubs, 'recommended_positions': positions})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5001)

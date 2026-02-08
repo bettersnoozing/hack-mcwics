@@ -16,6 +16,7 @@ import { Recruitment } from './pages/admin/Recruitment';
 import { Applications } from './pages/admin/Applications';
 import { ApplicationDetail } from './pages/admin/ApplicationDetail';
 import { FormBuilder } from './pages/admin/FormBuilder';
+import { ChatPage } from './pages/ChatPage';
 
 const useRealAuth = import.meta.env.VITE_USE_REAL_AUTH === 'true';
 
@@ -39,6 +40,7 @@ export default function App() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/clubs/:slug" element={<ClubPage />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/chat" element={<ChatPage />} />
 
                 {/* Student */}
                 <Route path="/app" element={<Dashboard />} />
