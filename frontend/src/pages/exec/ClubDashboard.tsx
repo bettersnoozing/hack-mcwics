@@ -53,6 +53,7 @@ export function ClubDashboard() {
   const [desc, setDesc] = useState('');
   const [email, setEmail] = useState('');
   const [website, setWebsite] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
   const [clubSaving, setClubSaving] = useState(false);
 
   useEffect(() => {
@@ -60,6 +61,7 @@ export function ClubDashboard() {
       setDesc(club.description || '');
       setEmail(club.email || '');
       setWebsite(club.website || '');
+      setTagsInput((club.tags ?? []).join(', '));
     }
   }, [club]);
 
@@ -67,7 +69,16 @@ export function ClubDashboard() {
     if (!clubId) return;
     setClubSaving(true);
     try {
-      const updated = await clubApi.updateClub(clubId, { description: desc, email, website });
+      const cleanedTags = tagsInput
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+      const updated = await clubApi.updateClub(clubId, {
+        description: desc,
+        email,
+        website,
+        tags: cleanedTags.length ? cleanedTags : undefined,
+      });
       setClub(updated);
       setEditClub(false);
     } catch { /* ignore */ } finally { setClubSaving(false); }
@@ -140,6 +151,15 @@ export function ClubDashboard() {
                 {!editClub && (
                   <>
                     <p className="mt-1 text-sm text-warmGray-500">{club.description || 'No description'}</p>
+                    {(club.tags ?? []).length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {club.tags!.map((tag) => (
+                          <Badge key={tag} variant="info">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                     <div className="mt-2 flex gap-4 text-xs text-warmGray-400">
                       {club.email && <span>{club.email}</span>}
                       {club.website && <a href={club.website} target="_blank" rel="noreferrer" className="underline">{club.website}</a>}
@@ -156,6 +176,12 @@ export function ClubDashboard() {
                 <Textarea label="Description" value={desc} onChange={(e) => setDesc(e.target.value)} />
                 <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <Input label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                <Input
+                  label="Tags"
+                  placeholder="e.g. AI, Robotics, Community"
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                />
                 <div className="flex gap-2">
                   <Button variant="cozyGradient" icon={<Save size={14} />} onClick={saveClub} disabled={clubSaving}>
                     {clubSaving ? 'Saving...' : 'Save'}
