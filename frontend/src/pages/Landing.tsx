@@ -103,7 +103,8 @@ export function Landing() {
       const q = search.toLowerCase();
       const matchesSearch =
         club.name.toLowerCase().includes(q) ||
-        club.description.toLowerCase().includes(q);
+        club.description.toLowerCase().includes(q) ||
+        (club.tags ?? []).some((tag) => tag.toLowerCase().includes(q));
       if (filter === 'recruiting') return matchesSearch && club.isRecruiting;
       return matchesSearch;
     })
@@ -222,6 +223,15 @@ export function Landing() {
                           
                           <h3 className="font-bold text-blue-950 font-mono text-lg">{club.name}</h3>
                           <p className="mt-3 text-sm text-blue-800 line-clamp-2 leading-relaxed">{club.description}</p>
+                      {(club.tags ?? []).length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1">
+                          {club.tags!.slice(0, 4).map((tag) => (
+                            <Badge key={tag} variant="info">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                           
                           <div className="mt-4 flex flex-wrap gap-2">
                           </div>

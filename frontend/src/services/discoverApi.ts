@@ -20,6 +20,7 @@ export interface DiscoverClub {
   description: string;
   email?: string;
   website?: string;
+  tags?: string[];
   isRecruiting: boolean;
   openRoleCount: number;
 }

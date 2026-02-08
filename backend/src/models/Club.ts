@@ -10,6 +10,7 @@ export interface IClub extends Document {
     admins: Types.ObjectId[]; // club leaders with admin privileges
     openRoles?: Types.ObjectId[]; // open exec positions
     discussionForumId?: Types.ObjectId; // optional reference to a discussion forum
+    tags?: string[]; // optional array of tags for filtering and categorization
 }
 
 const clubSchema = new Schema<IClub>(
@@ -22,6 +23,7 @@ const clubSchema = new Schema<IClub>(
         openRoles: [{ type: Types.ObjectId, ref: "OpenRole", default: [] }],
         admins: [{ type: Types.ObjectId, ref: "User", default: [] }],
         discussionForumId: { type: Types.ObjectId, ref: "DiscussionForum" },
+        tags: [{ type: String }],
 	},
 	{ timestamps: true }
 );
