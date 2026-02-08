@@ -1,14 +1,17 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronDown, Check } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ArrowLeft, ChevronDown, Check, MessageSquare } from 'lucide-react';
 import { AnimatedPage } from '../../components/motion/AnimatedPage';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
+import { CommentTree } from '../../components/CommentTree';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { applicationApi, type ApplicationData, type AppStatus } from '../../services/applicationApi';
+import { forumApi, type CommentData, type CommentThreadData } from '../../services/forumApi';
 
 const ALL_STATUSES: AppStatus[] = ['SUBMITTED', 'UNDER_REVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'];
 const statusVariant: Record<AppStatus, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
@@ -47,8 +50,15 @@ function StatusDropdown({ current, onChange }: { current: AppStatus; onChange: (
 export function ApplicationDetail() {
   const { applicationId } = useParams<{ applicationId: string }>();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [app, setApp] = useState<ApplicationData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Review thread state
+  const [reviewThread, setReviewThread] = useState<CommentThreadData | null>(null);
+  const [reviewComments, setReviewComments] = useState<CommentData[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!applicationId) return;
@@ -57,6 +67,56 @@ export function ApplicationDetail() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [applicationId]);
+
+  const loadReviewThread = useCallback(async () => {
+    if (!applicationId) return;
+    setReviewLoading(true);
+    setReviewError(null);
+    try {
+      const t = await forumApi.getOrCreateReviewThread(applicationId);
+      setReviewThread(t);
+      const c = await forumApi.listComments(t._id);
+      setReviewComments(c);
+    } catch (err: unknown) {
+      const e = err as Error & { status?: number };
+      if (e.status === 403) {
+        setReviewError('Exec-only');
+      } else {
+        setReviewError(e.message || 'Could not load review discussion.');
+      }
+    } finally {
+      setReviewLoading(false);
+    }
+  }, [applicationId]);
+
+  useEffect(() => {
+    if (app && applicationId) {
+      loadReviewThread();
+    }
+  }, [app, applicationId, loadReviewThread]);
+
+  const refreshReviewComments = async () => {
+    if (!reviewThread) return;
+    const c = await forumApi.listComments(reviewThread._id);
+    setReviewComments(c);
+  };
+
+  const handleReviewPost = async (body: string, parentId?: string | null, stars?: number) => {
+    if (!reviewThread) return;
+    await forumApi.postComment(reviewThread._id, body, parentId, stars);
+    await refreshReviewComments();
+  };
+
+  const handleEditStars = async (commentId: string, stars: number) => {
+    await forumApi.editComment(commentId, { stars });
+    await refreshReviewComments();
+  };
+
+  const handleReviewDelete = async (commentId: string) => {
+    if (!reviewThread) return;
+    await forumApi.softDeleteComment(commentId);
+    await refreshReviewComments();
+  };
 
   const handleStatusChange = async (status: AppStatus) => {
     if (!app) return;
@@ -142,14 +202,35 @@ export function ApplicationDetail() {
             <EmptyStateCard emoji="📝" title="No answers" description="This application has no answers yet." />
           )}
 
-          {/* Coming soon placeholders */}
-          <div className="grid gap-4 sm:grid-cols-2 mt-8">
-            <Card>
-              <CardContent className="py-6 text-center">
-                <p className="text-warmGray-400 text-sm">Reviews</p>
-                <p className="text-xs text-warmGray-300 mt-1">Coming soon</p>
-              </CardContent>
-            </Card>
+          {/* Review Discussion */}
+          <div className="mt-8">
+            <h2 className="text-sm font-semibold text-warmGray-700 uppercase tracking-wide flex items-center gap-1.5 mb-4">
+              <MessageSquare size={14} /> Review Discussion
+            </h2>
+
+            {reviewLoading ? (
+              <SkeletonCard />
+            ) : reviewError ? (
+              <EmptyStateCard emoji="🔒" title="Access Restricted" description={reviewError} />
+            ) : (
+              <CommentTree
+                comments={reviewComments}
+                currentUserId={user?.id}
+                isLeader={true}
+                threadType="REVIEW"
+                onPost={handleReviewPost}
+                onDelete={handleReviewDelete}
+                onEditStars={handleEditStars}
+                onDeleteError={(msg) => showToast(msg, 'error')}
+                composerPlaceholder="Add a review comment..."
+                emptyTitle="No review comments yet"
+                emptyDescription="Start the discussion about this application."
+              />
+            )}
+          </div>
+
+          {/* Internal Notes placeholder */}
+          <div className="mt-8">
             <Card>
               <CardContent className="py-6 text-center">
                 <p className="text-warmGray-400 text-sm">Internal Notes</p>

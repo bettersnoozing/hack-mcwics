@@ -3,6 +3,8 @@ import { Types } from "mongoose";
 import { Application, ApplicationStatus } from "../models/Application.ts";
 import { OpenRole } from "../models/OpenRole.ts";
 import { Club } from "../models/Club.ts";
+import { CommentThread } from "../models/CommentThread.ts";
+import { Comment } from "../models/Comment.ts";
 
 /**
  * GET /applications/mine
@@ -32,7 +34,8 @@ export async function listMyApplications(req: Request, res: Response) {
 /**
  * GET /clubs/:clubId/applications?openRoleId=&status=
  * Auth: approved exec of the club.
- * Returns applications with populated applicant (name, email) and openRole (jobTitle).
+ * Returns applications with populated applicant (name, email) and openRole (jobTitle),
+ * plus reviewAvgStars and reviewStarsCount from REVIEW thread comments.
  */
 export async function listApplicationsForClub(req: Request, res: Response) {
   try {
@@ -41,7 +44,6 @@ export async function listApplicationsForClub(req: Request, res: Response) {
     const club = await Club.findById(clubId).lean();
     if (!club) return res.status(404).json({ message: "Club not found" });
 
-    // Build filter: all openRoles belonging to this club
     const filter: Record<string, unknown> = {
       openRole: { $in: club.openRoles ?? [] },
     };
@@ -60,7 +62,60 @@ export async function listApplicationsForClub(req: Request, res: Response) {
       .sort({ createdAt: -1 })
       .lean();
 
-    res.json(apps);
+    const appIds = apps.map((a) => a._id);
+
+    // Batch: find all REVIEW threads for these applications
+    const threads = await CommentThread.find({
+      type: "REVIEW",
+      application: { $in: appIds },
+    }).select("_id application").lean();
+
+    const threadByAppId = new Map<string, Types.ObjectId>();
+    const threadIds: Types.ObjectId[] = [];
+    for (const t of threads) {
+      if (t.application) {
+        threadByAppId.set(t.application.toString(), t._id);
+        threadIds.push(t._id);
+      }
+    }
+
+    // Batch: aggregate star ratings across all review threads
+    const starStats = threadIds.length > 0
+      ? await Comment.aggregate<{ _id: Types.ObjectId; avg: number; count: number }>([
+          {
+            $match: {
+              threadId: { $in: threadIds },
+              deleted: false,
+              parentId: null,
+              stars: { $exists: true, $ne: null },
+            },
+          },
+          {
+            $group: {
+              _id: "$threadId",
+              avg: { $avg: "$stars" },
+              count: { $sum: 1 },
+            },
+          },
+        ])
+      : [];
+
+    const statsByThreadId = new Map<string, { avg: number; count: number }>();
+    for (const s of starStats) {
+      statsByThreadId.set(s._id.toString(), { avg: s.avg, count: s.count });
+    }
+
+    const result = apps.map((app) => {
+      const threadId = threadByAppId.get(app._id.toString());
+      const stats = threadId ? statsByThreadId.get(threadId.toString()) : undefined;
+      return {
+        ...app,
+        reviewAvgStars: stats ? Math.round(stats.avg * 10) / 10 : null,
+        reviewStarsCount: stats?.count ?? 0,
+      };
+    });
+
+    res.json(result);
   } catch (err) {
     console.error("listApplicationsForClub error:", err);
     res.status(500).json({ message: "Internal error" });

@@ -37,6 +37,8 @@ export interface ApplicationData {
   };
   answers: Record<string, string>;
   status: AppStatus;
+  reviewAvgStars?: number | null;
+  reviewStarsCount?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,117 +1,146 @@
-import { useParams, Link } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Send, Users } from 'lucide-react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { AnimatedPage } from '../../components/motion/AnimatedPage';
 import { PageContainer } from '../../components/layout/PageContainer';
-import { Card, CardContent } from '../../components/ui/Card';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
 import { EmptyStateCard } from '../../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
-import { useApi } from '../../contexts/ApiContext';
-import { useSession } from '../../hooks/useSession';
-import type { ForumChannel } from '../../contracts';
+import { CommentTree } from '../../components/CommentTree';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import { forumApi, type CommentData, type CommentThreadData } from '../../services/forumApi';
 
 export function Forum() {
-  const { applicationGroupId } = useParams<{ applicationGroupId: string }>();
-  const api = useApi();
-  const session = useSession();
-  const [channel, setChannel] = useState<ForumChannel | undefined>();
+  const { clubId } = useParams<{ clubId: string }>();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  const from = searchParams.get('from');
+  const backTo = from === 'exec' ? `/exec/club/${clubId}` : '/app';
+  const backLabel = from === 'exec' ? 'Back to Club' : 'Back to Dashboard';
+
+  const [thread, setThread] = useState<CommentThreadData | null>(null);
+  const [comments, setComments] = useState<CommentData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const sendingRef = useRef(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isLeader = !!(
+    user &&
+    thread &&
+    (user.roles.includes('CLUB_LEADER') || user.roles.includes('ADMIN'))
+  );
+
+  const loadThread = useCallback(async () => {
+    if (!clubId) return;
+    console.log("[DEBUG] Forum: loading thread for clubId=%s", clubId);
+    try {
+      const t = await forumApi.getOrCreateForumThread(clubId);
+      console.log("[DEBUG] Forum: got thread id=%s title=%s", t._id, t.title);
+      setThread(t);
+      const c = await forumApi.listComments(t._id);
+      console.log("[DEBUG] Forum: loaded %d comments", c.length);
+      setComments(c);
+    } catch (err: unknown) {
+      const e = err as Error & { status?: number };
+      console.error("[DEBUG] Forum: error status=%s message=%s", e.status, e.message);
+      if (e.status === 403) {
+        setError("You don't have access to this forum yet.");
+      } else if (e.status === 404) {
+        setError('Forum not found.');
+      } else {
+        setError(e.message || 'Something went wrong.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [clubId]);
 
   useEffect(() => {
-    if (!applicationGroupId) return;
-    api.getForumChannel(applicationGroupId).then((c) => { setChannel(c); setLoading(false); });
-  }, [api, applicationGroupId]);
+    loadThread();
+  }, [loadThread]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!channel || !session.role || !message.trim() || sendingRef.current) return;
-    sendingRef.current = true;
-    setSending(true);
-    const msgToSend = message.trim();
-    setMessage('');
-    try {
-      await api.postForumMessage(channel.applicationGroupId, {
-        senderId: session.id,
-        senderName: session.name,
-        body: msgToSend,
-      });
-      // Refetch channel to get the updated posts from localStorage
-      const updated = await api.getForumChannel(channel.applicationGroupId);
-      if (updated) setChannel(updated);
-    } finally {
-      sendingRef.current = false;
-      setSending(false);
-    }
+  const refreshComments = async () => {
+    if (!thread) return;
+    const c = await forumApi.listComments(thread._id);
+    setComments(c);
+  };
+
+  const handlePost = async (body: string, parentId?: string | null, stars?: number) => {
+    if (!thread) return;
+    await forumApi.postComment(thread._id, body, parentId, stars);
+    await refreshComments();
+  };
+
+  const handleDelete = async (commentId: string) => {
+    if (!thread) return;
+    await forumApi.softDeleteComment(commentId);
+    await refreshComments();
   };
 
   if (loading) {
-    return <PageContainer><SkeletonCard /><SkeletonCard className="mt-4" /></PageContainer>;
+    return (
+      <AnimatedPage>
+        <PageContainer>
+          <SkeletonCard />
+          <SkeletonCard className="mt-4" />
+        </PageContainer>
+      </AnimatedPage>
+    );
   }
 
-  if (!channel) {
-    return <PageContainer><EmptyStateCard emoji="💬" title="Forum not found" description="This discussion group doesn't exist." /></PageContainer>;
+  if (error) {
+    const is404 = error === 'Forum not found.';
+    return (
+      <AnimatedPage>
+        <PageContainer>
+          <Link
+            to={backTo}
+            className="mb-6 inline-flex items-center gap-1.5 text-sm text-warmGray-500 hover:text-warmGray-700 transition-colors"
+          >
+            <ArrowLeft size={16} />
+            {backLabel}
+          </Link>
+          <EmptyStateCard
+            emoji={is404 ? "😕" : "🔒"}
+            title={is404 ? "Forum Not Found" : "Access Denied"}
+            description={error}
+          />
+        </PageContainer>
+      </AnimatedPage>
+    );
   }
 
   return (
     <AnimatedPage>
       <PageContainer>
-        <Link to="/app" className="mb-6 inline-flex items-center gap-1.5 text-sm text-warmGray-500 hover:text-warmGray-700 transition-colors">
+        <Link
+          to={backTo}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-warmGray-500 hover:text-warmGray-700 transition-colors"
+        >
           <ArrowLeft size={16} />
-          Back to Dashboard
+          {backLabel}
         </Link>
 
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-warmGray-800">
-            {channel.clubName} — {channel.positionTitle}
-          </h1>
-          <div className="mt-1 flex items-center gap-1 text-sm text-warmGray-500">
-            <Users size={14} />
-            {channel.members.length} members: {channel.members.map((m) => m.name).join(', ')}
-          </div>
+          <h1 className="text-xl font-bold text-warmGray-800">{thread?.title}</h1>
+          <p className="mt-1 text-sm text-warmGray-500">
+            {thread?.commentCount ?? 0} {(thread?.commentCount ?? 0) === 1 ? 'post' : 'posts'}
+          </p>
         </div>
 
-        <Card className="mb-4">
-          <CardContent className="max-h-96 overflow-y-auto space-y-4">
-            {channel.posts.length === 0 ? (
-              <EmptyStateCard emoji="🗨️" title="No messages yet" description="Start the conversation!" />
-            ) : (
-              channel.posts.map((msg) => (
-                <div key={msg.id} className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-100 to-calm-100 text-xs font-medium text-brand-600">
-                    {msg.senderName.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-warmGray-700">{msg.senderName}</span>
-                      <span className="text-xs text-warmGray-400">
-                        {new Date(msg.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-sm text-warmGray-600">{msg.body}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <form className="flex gap-2" onSubmit={handleSend}>
-          <div className="flex-1">
-            <Input
-              placeholder="Type a message..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-          </div>
-          <Button variant="cozyGradient" icon={<Send size={16} />} disabled={sending || !message.trim()}>
-            Send
-          </Button>
-        </form>
+        <CommentTree
+          comments={comments}
+          currentUserId={user?.id}
+          isLeader={isLeader}
+          threadType="FORUM"
+          onPost={handlePost}
+          onDelete={handleDelete}
+          onDeleteError={(msg) => showToast(msg, 'error')}
+          composerPlaceholder="Start a new discussion..."
+          emptyTitle="No posts yet"
+          emptyDescription="Be the first to start the conversation!"
+        />
       </PageContainer>
     </AnimatedPage>
   );

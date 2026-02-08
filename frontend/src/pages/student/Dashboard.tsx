@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Briefcase } from 'lucide-react';
+import { Clock, Briefcase, MessageSquare } from 'lucide-react';
 import { AnimatedPage } from '../../components/motion/AnimatedPage';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { SectionHeader } from '../../components/layout/SectionHeader';
@@ -148,10 +148,40 @@ export function Dashboard() {
             )
           )}
 
-          {/* ── Forums (unchanged) ── */}
-          {tab === 'forums' && (
-            <EmptyStateCard emoji="💬" title="No forum groups yet" description="Forums will appear when you apply to positions with group discussions." />
-          )}
+          {/* ── Forums ── */}
+          {tab === 'forums' && (() => {
+            const clubMap = new Map<string, string>();
+            for (const app of myApps) {
+              const club = app.openRole?.club;
+              if (club && typeof club === 'object' && club._id && club.name) {
+                clubMap.set(club._id, club.name);
+              }
+            }
+            const forumClubs = Array.from(clubMap.entries());
+            return forumClubs.length === 0 ? (
+              <EmptyStateCard emoji="💬" title="No forums yet" description="Forums will appear once you apply to a club's open roles." />
+            ) : (
+              <div className="space-y-4">
+                {forumClubs.map(([cId, cName]) => (
+                  <Link key={cId} to={`/clubs/${cId}/forum?from=student`}>
+                    <Card hover>
+                      <CardContent>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-100 to-calm-100 text-lg">
+                            <MessageSquare size={20} className="text-brand-500" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-warmGray-800">{cName} Forum</h3>
+                            <p className="text-xs text-warmGray-500">Discuss with fellow applicants and club leaders</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            );
+          })()}
         </AnimatedTabContent>
       </PageContainer>
     </AnimatedPage>

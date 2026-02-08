@@ -31,11 +31,9 @@ export function StickyHeader() {
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-warmGray-100">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
         <Link to="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cozy-400 to-brand-400 text-lg shadow-sm">
-            🤝
-          </div>
-          <span className="text-lg font-bold text-warmGray-800 hidden sm:inline">
-            McGill Clubs
+          <span className="text-lg font-bold font-mono hidden sm:inline">
+            <span className="text-red-600">my</span>
+            <span className="text-warmGray-800">Extracurriculars</span>
           </span>
         </Link>
 
