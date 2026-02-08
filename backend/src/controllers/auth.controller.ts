@@ -181,7 +181,16 @@ export async function me(req: Request, res: Response) {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json({ id: user._id, email: user.email, name: user.name, roles: user.roles });
+    res.json({
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      roles: user.roles,
+      adminClub: user.adminClub || null,
+      execPosition: user.execPosition || "",
+      bio: user.bio || "",
+      profilePhotoUrl: user.profilePhotoUrl || "",
+    });
   } catch (err) {
     console.error("me error:", err);
     res.status(500).json({ message: "Internal error" });

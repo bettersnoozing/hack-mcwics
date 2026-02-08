@@ -7,6 +7,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (email: string, password: string, name?: string) => Promise<AuthUser>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -41,6 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u;
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const u = await authApi.me();
+    setUser(u);
+  }, []);
+
   const logout = useCallback(() => {
     authApi.logout();
     setUser(null);
@@ -49,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.roles.includes('ADMIN') || user?.roles.includes('CLUB_LEADER') || false;
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

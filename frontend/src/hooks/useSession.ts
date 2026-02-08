@@ -7,6 +7,9 @@ export interface SessionInfo {
   name: string;
   email: string;
   id: string;
+  // Club exec
+  adminClub?: string | null;
+  roles?: string[];
   // Only available in demo mode
   clubId?: string;
   clubName?: string;
@@ -31,6 +34,8 @@ export function useSession(): SessionInfo {
         name: auth.user.name,
         email: auth.user.email,
         id: auth.user.id,
+        adminClub: auth.user.adminClub,
+        roles: auth.user.roles,
         logout: auth.logout,
       };
     }
