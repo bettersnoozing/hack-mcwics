@@ -211,7 +211,7 @@ export function Chatbot({ className = '' }: ChatbotProps) {
             </div>
             <div>
               <h2 className="font-semibold text-warmGray-800">Club Assistant</h2>
-              <p className="text-xs text-warm Gray-500">Powered Snowflake</p>
+              <p className="text-xs text-warmGray-500">Powered by Snowflake</p>
             </div>
           </div>
           <Button
