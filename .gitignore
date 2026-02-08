@@ -25,3 +25,6 @@ coverage/
 .DS_Store
 .vscode/
 .idea/
+
+backend2/.env
+backend2/venv/

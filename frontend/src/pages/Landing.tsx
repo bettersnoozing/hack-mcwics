@@ -11,8 +11,7 @@ import { TabsSegmented } from '../components/ui/TabsSegmented';
 import { AnimatedTabContent } from '../components/motion/AnimatedTabContent';
 import { EmptyStateCard } from '../components/ui/EmptyStateCard';
 import { SkeletonCard } from '../components/ui/SkeletonCard';
-import { useApi } from '../contexts/ApiContext';
-import type { Club } from '../contracts';
+import { discoverApi, type DiscoverClub } from '../services/discoverApi';
 
 const filterTabs = [
   { key: 'all', label: 'All Clubs' },
@@ -87,26 +86,31 @@ function TypingText() {
 }
 
 export function Landing() {
-  const api = useApi();
-  const [clubs, setClubs] = useState<Club[]>([]);
+  const [clubs, setClubs] = useState<DiscoverClub[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    api.listAllClubs().then((data) => { setClubs(data); setLoading(false); });
-  }, [api]);
+    discoverApi.listClubs()
+      .then(setClubs)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filtered = clubs.filter((club) => {
+  const filtered = clubs
+    .filter((club) => {
+      const q = search.toLowerCase();
       const matchesSearch =
-      club.name.toLowerCase().includes(search.toLowerCase()) ||
-      club.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
+        club.name.toLowerCase().includes(q) ||
+        club.description.toLowerCase().includes(q);
       if (filter === 'recruiting') return matchesSearch && club.isRecruiting;
-    if (filter === 'popular') return matchesSearch && club.memberCount >= 100;
       return matchesSearch;
     })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    .sort((a, b) => {
+      if (filter === 'most_roles') return b.openRoleCount - a.openRoleCount;
+      return 0;
+    });
 
   const scrollToClubs = () => {
     document.getElementById('clubs-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -206,7 +210,7 @@ export function Landing() {
               ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {filtered.map((club) => (
-                    <Link key={club.id} to={`/clubs/${club.name}`}>
+                    <Link key={club._id} to={`/clubs/${club._id}`}>
                       <Card hover className="h-full border-2 border-blue-200 hover:border-brand-400 hover:shadow-lg hover:shadow-brand-100/50 transition-all bg-white">
                         <CardContent className="p-6">
                           <div className="mb-4 flex items-center justify-between">

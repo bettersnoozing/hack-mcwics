@@ -9,3 +9,9 @@ DEV_MONGO= `mongo development database connection string`
 make sure to npm install.
 
 run with npm run dev
+
+# dev instructions frontend
+in another terminal concurrently run `npm run dev` to run the vite app. make sure to populate with the proper .env first.
+
+# dev instructions snowflake
+@brandon
