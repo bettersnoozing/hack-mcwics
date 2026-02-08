@@ -288,6 +288,42 @@ export function Landing() {
               )}
             </AnimatedTabContent>
           </div>
+
+          {/* Testimonial Cards Section */}
+          <div className="mt-24 mb-16">
+            <SectionHeader
+              title="What students are saying"
+              subtitle="Real experiences from our users"
+              className="mb-8 text-center"
+            />
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <img src="https://i.ibb.co/GvpXWLbF/Screenshot-2026-02-08-at-10-54-23-AM.png" alt="Testimonial 1" className="w-32 h-32 rounded-full mb-4 border-2 border-blue-300" />
+                  <p className="text-blue-900 font-mono text-base mb-3">“That UI is tuff AF 😮‍💨”</p>
+                  <span className="font-bold text-blue-800">Sophie McBroom</span>
+                  <span className="text-xs text-blue-500">Comp Sci '27 - Future SUS Exec</span>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-cyan-50 to-blue-100 border-blue-200">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Testimonial 2" className="w-32 h-32 rounded-full mb-4 border-2 border-cyan-300" />
+                  <p className="text-blue-900 font-mono text-base mb-3">“The club search and filters are so helpful. I never knew there were so many opportunities!”</p>
+                  <span className="font-bold text-blue-800">Alex P.</span>
+                  <span className="text-xs text-blue-500">Software Eng '26</span>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-blue-50 to-cyan-100 border-blue-200">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="Testimonial 3" className="w-32 h-32 rounded-full mb-4 border-2 border-cyan-300" />
+                  <p className="text-blue-900 font-mono text-base mb-3">“I got accepted to two clubs! The site made it so easy to apply and keep track of my applications.”</p>
+                  <span className="font-bold text-blue-800">Priya S.</span>
+                  <span className="text-xs text-blue-500">Electrical Eng '25</span>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
         </PageContainer>
       </div>
     </AnimatedPage>
