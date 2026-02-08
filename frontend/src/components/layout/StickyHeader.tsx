@@ -58,11 +58,11 @@ export function StickyHeader() {
           })}
 
           {/* Outbox button (admin only) */}
-          {session.role === 'admin' && (
+          {/* {session.role === 'admin' && (
             <div className="ml-2">
               <OutboxButton />
             </div>
-          )}
+          )} */}
 
           {/* Demo Mode pill (only in demo mode) */}
           {!useRealAuth && session.openPicker && (
