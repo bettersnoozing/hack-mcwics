@@ -1,12 +1,13 @@
 import { getStoredToken } from './authApi';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+// Use backend1 (Express) for discover API
+const DISCOVER_API_BASE = 'http://localhost:3000';
 
 async function request<T>(path: string): Promise<T> {
   const token = getStoredToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { headers });
+  const res = await fetch(`${DISCOVER_API_BASE}${path}`, { headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { message?: string }).message || `Request failed: ${res.status}`);
