@@ -98,13 +98,15 @@ export function Landing() {
   }, [api]);
 
   const filtered = clubs.filter((club) => {
-    const matchesSearch =
+      const matchesSearch =
       club.name.toLowerCase().includes(search.toLowerCase()) ||
       club.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
-    if (filter === 'recruiting') return matchesSearch && club.isRecruiting;
+      if (filter === 'recruiting') return matchesSearch && club.isRecruiting;
     if (filter === 'popular') return matchesSearch && club.memberCount >= 100;
-    return matchesSearch;
-  });
+      return matchesSearch;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
   const scrollToClubs = () => {
     document.getElementById('clubs-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -204,7 +206,7 @@ export function Landing() {
               ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {filtered.map((club) => (
-                    <Link key={club.id} to={`/clubs/${club.slug}`}>
+                    <Link key={club.id} to={`/clubs/${club.name}`}>
                       <Card hover className="h-full border-2 border-blue-200 hover:border-brand-400 hover:shadow-lg hover:shadow-brand-100/50 transition-all bg-white">
                         <CardContent className="p-6">
                           <div className="mb-4 flex items-center justify-between">
