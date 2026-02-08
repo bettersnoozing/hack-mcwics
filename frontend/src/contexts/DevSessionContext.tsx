@@ -49,6 +49,7 @@ const STUDENTS = [
 const ADMIN_CLUBS = [
   { clubId: 'c1', clubName: 'McGill AI Society', adminId: 'adm-ai-1', adminName: 'Dr. Smith', adminEmail: 'admin@mcgillai.ca' },
   { clubId: 'c2', clubName: 'HackMcGill', adminId: 'adm-hack-1', adminName: 'Jordan Lee', adminEmail: 'admin@hackmcgill.ca' },
+  { clubId: 'c3', clubName: 'Computer Science Undergraduate Society', adminId: 'adm-csus-1', adminName: 'Brandon Felix', adminEmail: 'vpinternal.csus@mcgill.ca' },
   { clubId: 'c4', clubName: 'McGill Robotics', adminId: 'adm-robo-1', adminName: 'Prof. Chen', adminEmail: 'admin@robotics.mcgill.ca' },
   { clubId: 'c5', clubName: 'McGill Women in CS', adminId: 'adm-wics-1', adminName: 'Maria Santos', adminEmail: 'admin@wics.mcgill.ca' },
 ];

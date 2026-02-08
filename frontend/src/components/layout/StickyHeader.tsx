@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Shield, FlaskConical, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, Shield, FlaskConical, User, LogOut, MessageCircle } from 'lucide-react';
 import { useSession } from '../../hooks/useSession';
 import { OutboxButton } from '../OutboxPanel';
 
@@ -12,6 +12,7 @@ export function StickyHeader() {
 
   const navLinks = [
     { to: '/', label: 'Discover', icon: undefined as React.ReactNode },
+    { to: '/chat', label: 'Chat', icon: <MessageCircle size={16} /> as React.ReactNode },
     ...(session.role === 'student'
       ? [{ to: '/app', label: 'Dashboard', icon: <LayoutDashboard size={16} /> as React.ReactNode }]
       : []),

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { register, registerAdmin, login, me, logout } from "../controllers/auth.controller.ts";
+import { register, registerAdmin, login, me, logout, fixRoles } from "../controllers/auth.controller.ts";
 import { authenticate } from "../middleware/auth/authenticate.ts";
 
 const authRouter = Router();
@@ -16,6 +16,7 @@ authRouter.post("/register/admin", registerAdmin); // Admin signup (requires key
 authRouter.post("/login", login);
 authRouter.get("/me", authenticate, me);
 authRouter.post("/logout", logout);
+authRouter.post("/fix-roles", fixRoles);           // One-time migration to fix lowercase roles
 
 // Backward-compatible aliases (old paths)
 authRouter.post("/user/create", register);

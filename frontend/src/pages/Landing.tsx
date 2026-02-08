@@ -100,7 +100,7 @@ export function Landing() {
                       <h3 className="font-semibold text-warmGray-800">{club.name}</h3>
                       <p className="mt-1 text-sm text-warmGray-500 line-clamp-2">{club.description}</p>
                       <div className="mt-3 flex flex-wrap gap-1.5">
-                        {club.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)}
+                        {(Array.isArray(club.tags) ? club.tags : (club.tags || '').split(',')).filter(Boolean).map((tag) => <Badge key={tag}>{tag.trim()}</Badge>)}
                       </div>
                       <div className="mt-3 flex items-center gap-1 text-xs text-warmGray-400">
                         <Users size={14} />

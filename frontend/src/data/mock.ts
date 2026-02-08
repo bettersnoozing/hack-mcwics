@@ -129,6 +129,23 @@ export const mockApplications: Application[] = [
     positionTitle: 'Software Developer',
   },
   {
+    id: 'a5',
+    userId: 'u5',
+    clubId: '1',
+    positionId: 'p1',
+    status: 'under_review',
+    answers: [
+      { questionId: 'q1', question: 'Why do you want to join?', answer: 'I want to build cool AI projects and learn from the team.' },
+      { questionId: 'q2', question: 'Relevant experience?', answer: 'Full-stack developer with React and Python experience.' },
+    ],
+    submittedAt: '2025-01-22',
+    updatedAt: '2025-01-25',
+    applicantName: 'Brandon',
+    applicantEmail: 'brandon@mail.mcgill.ca',
+    clubName: 'McGill AI Society',
+    positionTitle: 'Software Developer',
+  },
+  {
     id: 'a2',
     userId: 'u1',
     clubId: '2',

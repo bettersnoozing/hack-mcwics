@@ -15,13 +15,14 @@ function generateId(): string {
 let currentSessionId = `session_${generateId()}_${Date.now()}`;
 
 export const chatApi = {
-  sendMessage: async (message: string): Promise<string> => {
+  sendMessage: async (message: string, userEmail?: string): Promise<string> => {
     const res = await fetch(`${BACKEND_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         message, 
-        session_id: currentSessionId 
+        session_id: currentSessionId,
+        user_email: userEmail 
       }),
     });
 

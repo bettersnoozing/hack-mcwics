@@ -3,12 +3,18 @@ import { Send, RefreshCw, Bot, User, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardFooter } from './ui/Card';
 import { Button } from './ui/Button';
 import { chatApi, type ChatMessage } from '../services/chatApi';
+import { useSession } from '../hooks/useSession';
 
 interface ChatbotProps {
   className?: string;
 }
 
 export function Chatbot({ className = '' }: ChatbotProps) {
+  const session = useSession();
+  
+  const user = session.email ? { email: session.email, name: session.name } : null;
+  const isAdmin = session.role === 'admin';
+  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,12 +31,13 @@ export function Chatbot({ className = '' }: ChatbotProps) {
 
   useEffect(() => {
     // Add welcome message on mount
+    const welcomeMessage = isAdmin
+      ? "Hi! 👋 I'm your McGill Club Assistant. As an admin, you can ask me about applications to your club, view applicant details, and get recruitment insights. How can I help?"
+      : "Hi! 👋 I'm your McGill Club Assistant. I can help you find clubs, explore open positions, and get personalized recommendations. What are you interested in?";
     setMessages([
-      chatApi.createAssistantMessage(
-        "Hi! 👋 I'm your McGill Club Assistant. I can help you find clubs, explore open positions, and get personalized recommendations. What are you interested in?"
-      ),
+      chatApi.createAssistantMessage(welcomeMessage),
     ]);
-  }, []);
+  }, [isAdmin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +50,7 @@ export function Chatbot({ className = '' }: ChatbotProps) {
     setIsLoading(true);
 
     try {
-      const response = await chatApi.sendMessage(trimmedInput);
+      const response = await chatApi.sendMessage(trimmedInput, user?.email);
       console.log('Chatbot received response:', response);
       const assistantMessage = chatApi.createAssistantMessage(response);
       setMessages((prev) => [...prev, assistantMessage]);
@@ -68,12 +75,19 @@ export function Chatbot({ className = '' }: ChatbotProps) {
     ]);
   };
 
-  const suggestedQueries = [
-    "What AI clubs are recruiting?",
-    "Show me software developer positions",
-    "What clubs have upcoming deadlines?",
-    "Recommend clubs for someone interested in robotics",
-  ];
+  const suggestedQueries = isAdmin
+    ? [
+        "Show me applications to my club",
+        "Accept the application from [name]",
+        "Move [applicant] to interview stage",
+        "Summarize our pending applications",
+      ]
+    : [
+        "What AI clubs are recruiting?",
+        "Show me software developer positions",
+        "What clubs have upcoming deadlines?",
+        "Recommend clubs for someone interested in robotics",
+      ];
 
   const handleSuggestionClick = (query: string) => {
     setInput(query);
