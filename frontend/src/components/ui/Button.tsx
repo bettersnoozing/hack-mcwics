@@ -4,13 +4,13 @@ type Variant = 'default' | 'outline' | 'ghost' | 'cozyGradient';
 
 const variantClasses: Record<Variant, string> = {
   default:
-    'bg-brand-500 text-white hover:bg-brand-600 shadow-sm',
+    'bg-mui-primary text-white hover:bg-mui-primary-dark shadow-mui',
   outline:
-    'border border-warmGray-200 bg-white text-warmGray-700 hover:bg-warmGray-50',
+    'border border-mui-border bg-white text-mui-primary hover:bg-mui-surface',
   ghost:
-    'text-warmGray-600 hover:bg-warmGray-100',
+    'text-mui-primary hover:bg-mui-surface',
   cozyGradient:
-    'bg-gradient-to-r from-cozy-400 to-brand-400 text-white shadow-md hover:shadow-lg hover:brightness-105',
+    'bg-mui-primary text-white shadow-mui hover:bg-mui-primary-dark active:bg-mui-primary',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -28,7 +28,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-calm-400 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-mui px-4 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-mui-primary/40 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${variantClasses[variant]} ${className}`}
       {...props}
     >
       {icon}

@@ -55,7 +55,7 @@ export function ChatWidget() {
         className={`fixed bottom-6 right-6 z-[9999] flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300 cursor-pointer
           ${open
             ? 'bg-warmGray-200 text-warmGray-600 scale-0 pointer-events-none'
-            : 'bg-gradient-to-br from-brand-500 to-calm-500 text-white hover:shadow-xl hover:scale-105 active:scale-95'
+            : 'bg-brand-500 text-white hover:bg-brand-600 hover:shadow-xl hover:scale-105 active:scale-95'
           }`}
         aria-label="Open chat"
       >

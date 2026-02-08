@@ -85,7 +85,7 @@ export function AuthPage() {
         <Card className="w-full max-w-md">
           <CardContent className="py-8">
             <div className="mb-6 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cozy-400 to-brand-400 text-2xl shadow-md">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500 text-2xl shadow-sm">
                 🤝
               </div>
               <h1 className="text-xl font-bold text-warmGray-800">Welcome to McGill Clubs</h1>

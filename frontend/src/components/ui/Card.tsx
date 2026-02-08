@@ -8,7 +8,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export function Card({ children, hover = false, className = '', ...props }: CardProps) {
   return (
     <div
-      className={`rounded-2xl border border-warmGray-100 bg-white shadow-sm ${hover ? 'transition-shadow hover:shadow-md' : ''} ${className}`}
+      className={`rounded-mui border border-warmGray-100 bg-white shadow-mui ${hover ? 'transition-shadow hover:shadow-mui-hover' : ''} ${className}`}
       {...props}
     >
       {children}
