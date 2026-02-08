@@ -3,9 +3,53 @@ import json
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import snowflake.connector
+from pymongo import MongoClient
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# MongoDB connection
+MONGO_URI = os.getenv('DEV_MONGO')
+MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'mcwics-portal')
+mongo_client = None
+mongo_db = None
+
+
+def get_mongo_db():
+    """Get MongoDB database connection."""
+    global mongo_client, mongo_db
+    if mongo_db is None:
+        mongo_client = MongoClient(MONGO_URI)
+        mongo_db = mongo_client[MONGO_DB_NAME]
+    return mongo_db
+
+
+def get_mongo_context(query=None):
+    """Query MongoDB for relevant context based on user query."""
+    try:
+        db = get_mongo_db()
+        context = {}
+        
+        # Get users (without sensitive data)
+        users = list(db.users.find({}, {'passwordHash': 0, '_id': 0}).limit(50))
+        context['users'] = users
+        
+        # Get clubs from MongoDB
+        clubs = list(db.clubs.find({}, {'_id': 0}).limit(50))
+        context['mongo_clubs'] = clubs
+        
+        # Get open roles/positions
+        openroles = list(db.openroles.find({}, {'_id': 0}).limit(50))
+        context['openroles'] = openroles
+        
+        # Get applications (without sensitive details)
+        applications = list(db.applications.find({}, {'_id': 0}).limit(50))
+        context['applications'] = applications
+        
+        return context
+    except Exception as e:
+        print(f"MongoDB error: {e}")
+        return {'error': str(e)}
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend requests
@@ -70,6 +114,32 @@ def snowflake_test():
         return jsonify({'snowflake_version': version[0]})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/mongo-test')
+def mongo_test():
+    """Test MongoDB connection and return sample data."""
+    try:
+        db = get_mongo_db()
+        # Get collection names
+        collections = db.list_collection_names()
+        # Get user count
+        user_count = db.users.count_documents({})
+        # Get sample users (without sensitive data)
+        sample_users = list(db.users.find({}, {'passwordHash': 0}).limit(5))
+        # Convert ObjectId to string for JSON serialization
+        for user in sample_users:
+            user['_id'] = str(user['_id'])
+        return jsonify({
+            'status': 'connected',
+            'database': MONGO_DB_NAME,
+            'collections': collections,
+            'user_count': user_count,
+            'sample_users': sample_users
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/create-snowflake-db')
 def create_snowflake_db():
@@ -381,9 +451,7 @@ def recommend():
         return jsonify({'error': str(e)}), 500
 
 
-# ============================================
 #  CHATBOT - Snowflake Cortex with Mistral
-# ============================================
 
 # Store chat history per session (in production, use Redis or database)
 chat_sessions = {}
@@ -405,19 +473,35 @@ def get_club_context():
         return {'error': str(e)}
 
 
-def build_system_prompt(context):
-    """Build system prompt with current data context."""
+def build_system_prompt(context, mongo_context=None):
+    """Build system prompt with current data context from Snowflake and MongoDB."""
     clubs_str = json.dumps(context.get('clubs', []), indent=2, default=str)
     positions_str = json.dumps(context.get('positions', []), indent=2, default=str)
+    
+    # Add MongoDB context if available
+    mongo_section = ""
+    if mongo_context:
+        if 'users' in mongo_context and mongo_context['users']:
+            users_str = json.dumps(mongo_context['users'], indent=2, default=str)
+            mongo_section += f"\n\nRegistered users on the platform (from MongoDB):\n{users_str}"
+        if 'mongo_clubs' in mongo_context and mongo_context['mongo_clubs']:
+            mongo_clubs_str = json.dumps(mongo_context['mongo_clubs'], indent=2, default=str)
+            mongo_section += f"\n\nClubs data (from MongoDB):\n{mongo_clubs_str}"
+        if 'openroles' in mongo_context and mongo_context['openroles']:
+            openroles_str = json.dumps(mongo_context['openroles'], indent=2, default=str)
+            mongo_section += f"\n\nOpen roles/positions (from MongoDB):\n{openroles_str}"
+        if 'applications' in mongo_context and mongo_context['applications']:
+            apps_str = json.dumps(mongo_context['applications'], indent=2, default=str)
+            mongo_section += f"\n\nApplications submitted (from MongoDB):\n{apps_str}"
     
     return f"""You are a helpful assistant for McGill University's club recruitment platform.
 You help students find clubs and positions that match their interests.
 
-Here is the current data about clubs:
+Here is the current data about clubs (from Snowflake):
 {clubs_str}
 
-Here are the current open positions:
-{positions_str}
+Here are the current open positions (from Snowflake):
+{positions_str}{mongo_section}
 
 Guidelines:
 - Be friendly and helpful
@@ -425,7 +509,8 @@ Guidelines:
 - When recommending clubs, explain why they might be a good fit
 - Always mention relevant deadlines for positions
 - If a user asks about applying, guide them but note you cannot submit applications for them
-- Keep responses concise but informative"""
+- Keep responses concise but informative
+- You have access to data from both Snowflake and MongoDB - use it to provide accurate, personalized responses"""
 
 
 def call_cortex_llm(prompt, conversation_history=None):
@@ -434,7 +519,7 @@ def call_cortex_llm(prompt, conversation_history=None):
     cs = conn.cursor()
     
     try:
-        # Build the full prompt with conversation history
+        # Builds the full prompt with conversation history
         full_prompt = ""
         if conversation_history:
             for msg in conversation_history:
@@ -442,7 +527,6 @@ def call_cortex_llm(prompt, conversation_history=None):
                 full_prompt += f"{role}: {msg['content']}\n\n"
         full_prompt += f"User: {prompt}\n\nAssistant:"
         
-        # Use simple string prompt format (cross-region enabled at account level)
         sql = """
         SELECT SNOWFLAKE.CORTEX.COMPLETE(
             'mistral-large',
@@ -478,13 +562,14 @@ def chat():
         if session_id not in chat_sessions:
             chat_sessions[session_id] = {
                 'history': [],
-                'context': get_club_context()
+                'context': get_club_context(),
+                'mongo_context': get_mongo_context(user_message)
             }
         
         session = chat_sessions[session_id]
         
-        # Build prompt with context
-        system_prompt = build_system_prompt(session['context'])
+        # Build prompt with context from both Snowflake and MongoDB
+        system_prompt = build_system_prompt(session['context'], session.get('mongo_context'))
         
         # Add system context to first message if new session
         if not session['history']:
