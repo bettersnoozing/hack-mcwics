@@ -282,14 +282,16 @@ def get_mongo_context(query=None, user_email=None):
                         } for c in admin_clubs]
                         
                         # Get applications for these clubs
-                        club_ids = [str(c.get('_id')) for c in admin_clubs]
+                        club_ids_str = [str(c.get('_id')) for c in admin_clubs]
+                        club_ids_obj = [c.get('_id') for c in admin_clubs]
                         club_names = [c.get('name') for c in admin_clubs]
                         club_slugs = [c.get('slug') for c in admin_clubs]
                         
                         applications_raw = list(db.applications.find({
                             '$or': [
-                                {'clubId': {'$in': club_ids}},
-                                
+                                # Match both string and ObjectId variants of clubId
+                                {'clubId': {'$in': club_ids_str}},
+                                {'clubId': {'$in': club_ids_obj}},
                                 {'club': {'$in': club_names}},
                                 {'clubSlug': {'$in': club_slugs}}
                             ]
@@ -332,6 +334,7 @@ def get_mongo_context(query=None, user_email=None):
                     
                     # Get applications for these clubs via openRoles
                     club_ids = [str(c.get('_id')) for c in admin_clubs]
+                    club_ids_obj = [c.get('_id') for c in admin_clubs]
                     club_names = [c.get('name') for c in admin_clubs]
                     club_object_ids = [c.get('_id') for c in admin_clubs]
                     
@@ -355,7 +358,9 @@ def get_mongo_context(query=None, user_email=None):
                                 {'openRole': {'$in': role_ids}},
                                 {'openRole': {'$in': role_id_strs}},
                                 {'roleId': {'$in': role_id_strs}},
+                                # Match clubId stored as either ObjectId or string
                                 {'clubId': {'$in': club_ids}},
+                                {'clubId': {'$in': club_ids_obj}},
                                 {'club': {'$in': club_names}}
                             ]
                         }).limit(100))
@@ -364,6 +369,7 @@ def get_mongo_context(query=None, user_email=None):
                         applications_raw = list(db.applications.find({
                             '$or': [
                                 {'clubId': {'$in': club_ids}},
+                                {'clubId': {'$in': club_ids_obj}},
                                 {'club': {'$in': club_names}}
                             ]
                         }).limit(100))
@@ -1089,6 +1095,8 @@ Guidelines:
 - Keep responses concise but informative
 - You have access to data from both Snowflake and MongoDB - use it to provide accurate, personalized responses
 - If the user is an admin and asks about "applications" (student submissions), ONLY show data from the "Applications to your clubs" section. DO NOT show "Open roles/positions" as if they were applications. Open roles are what students apply TO. Applications are what students HAVE SUBMITTED.
+- Never include the raw JSON data (arrays or objects) from this prompt in your replies. Use it only as internal context, and respond in natural language summaries and bullet points.
+- Do not wrap data in code blocks or start responses with '[' or '{'.
 - For admin users, you can summarize application stats, list applicants, and provide insights about applications
 
 ADMIN UPDATE CAPABILITIES:
